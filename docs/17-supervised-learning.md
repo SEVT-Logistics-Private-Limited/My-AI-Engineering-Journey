@@ -77,7 +77,7 @@ Supervised Learning
 
 **Not used directly.** We don't train a classic classifier or regression model.
 
-The closest idea is how our Telugu language models learn: they predict the **next character** in real Telugu text, and the actual next character is the known target. Because those targets come from the text itself rather than from people labelling data, this is called **self-supervised learning**, a close relative of supervised learning. See [DL](21-dl.md).
+The closest idea is how our Telugu language models learn: they predict the **next character** in real Telugu text, and the actual next character is the known target. Because those targets come from the text itself rather than from people labelling data, this is called **self-supervised learning**, a close relative of supervised learning. See [DL](29-dl.md).
 
 ---
 

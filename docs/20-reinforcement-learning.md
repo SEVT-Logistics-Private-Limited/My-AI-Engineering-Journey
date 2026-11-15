@@ -59,4 +59,4 @@ Reinforcement learning matters most in robotics, which connects to [VLA](10-vla.
 
 ---
 
-**Previous:** [← Semi-Supervised Learning](19-semi-supervised-learning.md) · [Home](../README.md) · **Next:** [DL →](21-dl.md)
+**Previous:** [← Semi-Supervised Learning](19-semi-supervised-learning.md) · [Home](../README.md) · **Next:** [Linear Regression →](21-linear-regression.md)

@@ -44,7 +44,7 @@ User hears the answer
 | Speech to text | Telugu speech becomes Telugu text | Audio (planned) |
 | Translate the query | Telugu → English, because the manuals are in English | [LLM](../../docs/11-llm.md) |
 | Retrieve from ChromaDB | Find the manual section that matches the question | [RAG](../../docs/13-rag.md) |
-| LLM generates the answer | Gemini answers using the manual section, as "Yodha" | [LLM](../../docs/11-llm.md), [Prompt Engineering](../../docs/23-prompt-engineering.md) |
+| LLM generates the answer | Gemini answers using the manual section, as "Yodha" | [LLM](../../docs/11-llm.md), [Prompt Engineering](../../docs/31-prompt-engineering.md) |
 | Text to speech | The Telugu answer becomes audio | Audio (planned) |
 
 ## System overview
@@ -101,11 +101,11 @@ We also built a small Telugu language model from scratch to understand how LLMs 
 | Context length | 128 | Maximum number of tokens the model can process together in one input |
 | Tokens (vocabulary) | 245 | One token per Telugu character |
 
-See [Transformers](../../docs/22-transformers.md) and [Tokenization](../../docs/25-tokenization.md).
+See [Transformers](../../docs/30-transformers.md) and [Tokenization](../../docs/33-tokenization.md).
 
 ## Topics covered in this project
 
-The project uses **13 of the 25 topics** in this handbook. Each topic page has an **"In our project"** section with the full details.
+The project uses **13 of the 33 topics** in this handbook. Each topic page has an **"In our project"** section with the full details.
 
 | # | Topic | Used? | How we used it |
 |---|---|---|---|
@@ -129,11 +129,19 @@ The project uses **13 of the 25 topics** in this handbook. Each topic page has a
 | 18 | [Unsupervised Learning](../../docs/18-unsupervised-learning.md) | Not yet | Not used yet |
 | 19 | [Semi-Supervised Learning](../../docs/19-semi-supervised-learning.md) | Not yet | Not used yet |
 | 20 | [Reinforcement Learning](../../docs/20-reinforcement-learning.md) | Not yet | Not used yet |
-| 21 | [DL](../../docs/21-dl.md) | Yes | Trained the Telugu model: batch 16, 10,000 steps, loss 331 → 1.42 |
-| 22 | [Transformers](../../docs/22-transformers.md) | Yes | Our Telugu Transformer (8 layers, 8 heads, 128 context), e5 encoder, Gemini decoder |
-| 23 | [Prompt Engineering](../../docs/23-prompt-engineering.md) | Yes | "Yodha" role prompt with rules, time, manual text and the last 8 messages |
-| 24 | [Hallucination](../../docs/24-hallucination.md) | Yes | "Don't imagine" rules, RAG, relevance threshold, Telugu output check |
-| 25 | [Tokenization](../../docs/25-tokenization.md) | Yes | Character tokenizer (245 Telugu tokens); output-token limits on Gemini |
+| 21 | [Linear Regression](../../docs/21-linear-regression.md) | Not yet | Not used yet |
+| 22 | [Logistic Regression](../../docs/22-logistic-regression.md) | Not yet | Not used yet |
+| 23 | [Decision Tree](../../docs/23-decision-tree.md) | Not yet | Not used yet |
+| 24 | [Random Forest](../../docs/24-random-forest.md) | Not yet | Not used yet |
+| 25 | [Gradient Boosting / XGBoost](../../docs/25-gradient-boosting.md) | Not yet | Not used yet |
+| 26 | [KNN](../../docs/26-knn.md) | Not directly | No KNN classifier; RAG retrieval is a related nearest-neighbour search (closest chunk by embedding distance) |
+| 27 | [Naive Bayes](../../docs/27-naive-bayes.md) | Not yet | Not used yet |
+| 28 | [K-Means](../../docs/28-k-means.md) | Not yet | Not used yet |
+| 29 | [DL](../../docs/29-dl.md) | Yes | Trained the Telugu model: batch 16, 10,000 steps, loss 331 → 1.42 |
+| 30 | [Transformers](../../docs/30-transformers.md) | Yes | Our Telugu Transformer (8 layers, 8 heads, 128 context), e5 encoder, Gemini decoder |
+| 31 | [Prompt Engineering](../../docs/31-prompt-engineering.md) | Yes | "Yodha" role prompt with rules, time, manual text and the last 8 messages |
+| 32 | [Hallucination](../../docs/32-hallucination.md) | Yes | "Don't imagine" rules, RAG, relevance threshold, Telugu output check |
+| 33 | [Tokenization](../../docs/33-tokenization.md) | Yes | Character tokenizer (245 Telugu tokens); output-token limits on Gemini |
 
 How the topics connect inside the assistant:
 
