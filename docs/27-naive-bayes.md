@@ -34,6 +34,8 @@ For an email, Naive Bayes:
 3. Calculates the probability of each category.
 4. Chooses the category with the highest probability.
 
+![How often the words free, offer and meeting appear in spam and not-spam emails](../assets/images/naive-bayes.png)
+
 ### Naive Bayes vs Logistic Regression
 
 Logistic Regression also looks at the available features. For an email it looks at the number of suspicious words, links and sender information.

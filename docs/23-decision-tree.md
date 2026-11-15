@@ -20,6 +20,8 @@ Imagine you want to play a game and have to decide whether to play outside or st
 
 Based on the answers, you make the decision. That is exactly the idea behind a Decision Tree.
 
+![A decision tree that asks whether it is raining and whether it is too cold, ending in stay inside or play outside](../assets/images/decision-tree.png)
+
 ## Why is it needed?
 
 - The decision can be read and explained step by step, unlike many other models.

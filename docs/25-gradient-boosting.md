@@ -26,6 +26,8 @@ Imagine you are learning maths.
 
 This is the basic idea behind boosting: every attempt improves on the mistakes of the previous one.
 
+![The answer to 25 × 4 improving from 80 to 90 to 100 as each new tree corrects the previous mistakes](../assets/images/gradient-boosting.png)
+
 ## Why is it needed?
 
 - A single small model is often not accurate enough.

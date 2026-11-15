@@ -34,6 +34,8 @@ KNN says: look at the movies that are similar to the new movie.
 
 That is the basic idea of KNN: it looks at the nearest examples and makes a prediction based on their results.
 
+![Movies plotted by type, with the new movie F surrounded by its three nearest neighbours A, C and E, all liked](../assets/images/knn.png)
+
 ## Why is it needed?
 
 - It is one of the simplest algorithms to understand.

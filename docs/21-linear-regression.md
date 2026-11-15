@@ -30,6 +30,8 @@ You can observe a pattern: as the years of experience increase, the salary incre
 6 years of experience → 8 LPA
 ```
 
+![Five known salary points, the fitted straight line, and the predicted salary of 8 LPA at 6 years of experience](../assets/images/linear-regression.png)
+
 ## Why is it needed?
 
 - Many real questions have a number as the answer: "how much?", "how many?", "how long?".

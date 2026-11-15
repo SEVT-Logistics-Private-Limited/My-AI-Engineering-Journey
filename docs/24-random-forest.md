@@ -14,6 +14,8 @@ A single [Decision Tree](23-decision-tree.md) can make mistakes, in the same way
 - For **regression**, the predictions are **averaged**.
 - The many trees work **independently** of each other.
 
+![One dataset feeding three independent trees whose votes are combined into a final prediction](../assets/images/random-forest.png)
+
 ## Why is it needed?
 
 - One tree can learn its training examples too closely and then do badly on new data.
