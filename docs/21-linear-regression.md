@@ -22,6 +22,8 @@ Suppose you have this data:
 | 4 | 6 LPA |
 | 5 | 7 LPA |
 
+(LPA = lakhs per annum, the yearly salary in lakhs of rupees.)
+
 You can observe a pattern: as the years of experience increase, the salary increases. Linear Regression learns that pattern and uses it to find the salary for an employee who is not in the data:
 
 ```text
