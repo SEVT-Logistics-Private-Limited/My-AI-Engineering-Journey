@@ -44,7 +44,7 @@ Tech stack                     RAG → API → FastAPI
 Machine learning foundations   ML → Supervised → Unsupervised → Semi-Supervised → Reinforcement
                                      ↓
 Machine learning algorithms    Linear Regression → Logistic Regression → Decision Tree → Random Forest
-                               → Gradient Boosting → KNN → Naive Bayes → K-Means
+                               → Gradient Boosting → KNN → K-Means → Naive Bayes
                                      ↓
 Deep learning                  DL → Transformers
                                      ↓
@@ -111,7 +111,7 @@ What machine learning is, and the four ways a model can learn, depending on what
 
 ### Machine learning algorithms
 
-The previous section covered the types of learning. Each page here is one classic algorithm: seven supervised ones, then K-Means, which is unsupervised.
+The previous section covered the types of learning. Each page here is one classic algorithm. All are supervised except K-Means, which is unsupervised.
 
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
@@ -121,8 +121,8 @@ The previous section covered the types of learning. Each page here is one classi
 | 25 | [Random Forest](docs/25-random-forest.md) | Many independent Decision Trees combined | Multiple trees · Voting (classification) · Averaging (regression) · Independent trees |
 | 26 | [Gradient Boosting / XGBoost](docs/26-gradient-boosting.md) | Models built one after another, each fixing earlier mistakes | Sequential models · 25 × 4 maths example · Random Forest vs boosting · XGBoost |
 | 27 | [KNN](docs/27-knn.md) | Predicts from the nearest existing examples | Nearest examples · Movie example · What K means |
-| 28 | [Naive Bayes](docs/28-naive-bayes.md) | Uses probability to pick the most likely category | Probability per category · Email-words example · Naive Bayes vs Logistic Regression |
-| 29 | [K-Means](docs/29-k-means.md) | Groups similar data points into K clusters | Clustering · Supermarket-customers example · Low / medium / high spenders · K-Means vs KNN |
+| 28 | [K-Means](docs/28-k-means.md) | Groups similar data points into K clusters | Clustering · Supermarket-customers example · Low / medium / high spenders · K-Means vs KNN |
+| 29 | [Naive Bayes](docs/29-naive-bayes.md) | Uses probability to pick the most likely category | Probability per category · Email-words example · Naive Bayes vs Logistic Regression |
 
 ### Deep learning
 

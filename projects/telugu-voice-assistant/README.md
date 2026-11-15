@@ -136,8 +136,8 @@ The project uses **14 of the 34 topics** in this handbook. Each topic page has a
 | 25 | [Random Forest](../../docs/25-random-forest.md) | Not yet | Not used yet |
 | 26 | [Gradient Boosting / XGBoost](../../docs/26-gradient-boosting.md) | Not yet | Not used yet |
 | 27 | [KNN](../../docs/27-knn.md) | Not directly | No KNN classifier; RAG retrieval is a related nearest-neighbour search (closest chunk by embedding distance) |
-| 28 | [Naive Bayes](../../docs/28-naive-bayes.md) | Not yet | Not used yet |
-| 29 | [K-Means](../../docs/29-k-means.md) | Not yet | Not used yet |
+| 28 | [K-Means](../../docs/28-k-means.md) | Not yet | Not used yet |
+| 29 | [Naive Bayes](../../docs/29-naive-bayes.md) | Not yet | Not used yet |
 | 30 | [DL](../../docs/30-dl.md) | Yes | Trained the Telugu model: batch 16, 10,000 steps, loss 331 → 1.42 |
 | 31 | [Transformers](../../docs/31-transformers.md) | Yes | Our Telugu Transformer (8 layers, 8 heads, 128 context), e5 encoder, Gemini decoder |
 | 32 | [Prompt Engineering](../../docs/32-prompt-engineering.md) | Yes | "Yodha" role prompt with rules, time, manual text and the last 8 messages |

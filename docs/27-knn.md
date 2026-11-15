@@ -76,4 +76,4 @@ A closely related idea powers our [RAG](14-rag.md) search: the user's question a
 
 ---
 
-**Previous:** [← Gradient Boosting / XGBoost](26-gradient-boosting.md) · [Home](../README.md) · **Next:** [Naive Bayes →](28-naive-bayes.md)
+**Previous:** [← Gradient Boosting / XGBoost](26-gradient-boosting.md) · [Home](../README.md) · **Next:** [K-Means →](28-k-means.md)

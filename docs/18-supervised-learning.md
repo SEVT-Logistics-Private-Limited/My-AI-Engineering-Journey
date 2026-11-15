@@ -60,7 +60,7 @@ Each of these is a concrete algorithm with its own page:
 | [Random Forest](25-random-forest.md) | Both | Many independent trees vote or average |
 | [Gradient Boosting / XGBoost](26-gradient-boosting.md) | Both | Trees built one after another, each fixing earlier mistakes |
 | [KNN](27-knn.md) | Both | Look at the nearest existing examples |
-| [Naive Bayes](28-naive-bayes.md) | Classification | Pick the category with the highest probability |
+| [Naive Bayes](29-naive-bayes.md) | Classification | Pick the category with the highest probability |
 
 ## Flow diagram
 
