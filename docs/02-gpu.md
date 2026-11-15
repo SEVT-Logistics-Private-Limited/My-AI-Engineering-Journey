@@ -121,4 +121,4 @@ Code: [`tiny_llm_400m.py`](https://github.com/SEVT-Logistics-Private-Limited/tin
 
 ---
 
-**Previous:** [← CPU](01-cpu.md) · [Home](../README.md) · **Next:** [Image →](03-image.md)
+**Previous:** [← CPU](01-cpu.md) · [Home](../README.md) · **Next:** [Text →](03-text.md)
