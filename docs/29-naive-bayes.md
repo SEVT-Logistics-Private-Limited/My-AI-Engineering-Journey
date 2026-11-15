@@ -1,10 +1,10 @@
-# 28. Naive Bayes
+# 29. Naive Bayes
 
 > Naive Bayes is a supervised learning algorithm that uses probability to predict which category something belongs to, based on the information available.
 
 ## Introduction
 
-Naive Bayes is a classification algorithm, like [Logistic Regression](23-logistic-regression.md). Both predict a category; they differ in how they arrive at the probability.
+After [K-Means](28-k-means.md), this page returns to supervised learning. Naive Bayes is a classification algorithm, like [Logistic Regression](23-logistic-regression.md). Both predict a category; they differ in how they arrive at the probability.
 
 ## What is it?
 
@@ -78,4 +78,4 @@ Choose the category with the highest probability
 
 ---
 
-**Previous:** [← KNN](27-knn.md) · [Home](../README.md) · **Next:** [K-Means →](29-k-means.md)
+**Previous:** [← K-Means](28-k-means.md) · [Home](../README.md) · **Next:** [DL →](30-dl.md)

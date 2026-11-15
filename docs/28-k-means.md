@@ -1,10 +1,10 @@
-# 29. K-Means
+# 28. K-Means
 
 > K-Means is an unsupervised learning algorithm that groups similar data points into K clusters based on their similarities.
 
 ## Introduction
 
-The previous algorithm pages were all supervised: they learn from examples with known answers. K-Means is different. It is an [unsupervised learning](19-unsupervised-learning.md) algorithm, so it works on data that has no answers at all.
+The algorithm pages so far were all supervised: they learn from examples with known answers. K-Means is different. It is an [unsupervised learning](19-unsupervised-learning.md) algorithm, so it works on data that has no answers at all.
 
 ## What is it?
 
@@ -88,4 +88,4 @@ K groups (low / medium / high spenders)
 
 ---
 
-**Previous:** [← Naive Bayes](28-naive-bayes.md) · [Home](../README.md) · **Next:** [DL →](30-dl.md)
+**Previous:** [← KNN](27-knn.md) · [Home](../README.md) · **Next:** [Naive Bayes →](29-naive-bayes.md)
