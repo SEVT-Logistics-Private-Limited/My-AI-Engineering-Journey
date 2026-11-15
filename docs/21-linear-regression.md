@@ -22,11 +22,15 @@ Suppose you have this data:
 | 4 | 6 LPA |
 | 5 | 7 LPA |
 
+(LPA = lakhs per annum, the yearly salary in lakhs of rupees.)
+
 You can observe a pattern: as the years of experience increase, the salary increases. Linear Regression learns that pattern and uses it to find the salary for an employee who is not in the data:
 
 ```text
 6 years of experience → 8 LPA
 ```
+
+![Five known salary points, the fitted straight line, and the predicted salary of 8 LPA at 6 years of experience](../assets/images/linear-regression.png)
 
 ## Why is it needed?
 

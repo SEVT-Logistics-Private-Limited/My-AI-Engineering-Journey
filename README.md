@@ -55,6 +55,8 @@ LLMs                           Prompt Engineering → Hallucination → Tokeniza
 
 ### Hardware
 
+Every AI model runs on a processor. This section covers the two that matter most: the CPU, which works step by step, and the GPU, which does many calculations at once and makes training practical.
+
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
 | 1 | [CPU](docs/01-cpu.md) | Step-by-step processing, binary, and how far LLM training can go on a CPU | Step-by-step (sequential) processing · Binary: the language of the CPU · Training an LLM on a CPU: how far you can go |
@@ -74,6 +76,8 @@ Computers cannot see pictures, only numbers. This section shows how an image is 
 
 ### Language, vision and robotics
 
+The main families of AI models: ones that understand language, ones that also see, and ones that also act. The section ends with ROS, the software that connects a robot's parts to those models.
+
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
 | 8 | [NLP](docs/08-nlp.md) | Branch of AI that understands human language | What NLP is · Understanding a request: intent, action and required information |
@@ -84,6 +88,8 @@ Computers cannot see pictures, only numbers. This section shows how an image is 
 
 ### Tech stack
 
+The building blocks used to turn a model into a working product: grounding answers in documents, and serving them over an API.
+
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
 | 13 | [RAG](docs/13-rag.md) | Retrieve documents, then let the LLM answer | RAG vs fine-tuning · Document ingestion · Chunking · Embedding · Retrieval · Evaluating a RAG system |
@@ -91,6 +97,8 @@ Computers cannot see pictures, only numbers. This section shows how an image is 
 | 15 | [FastAPI](docs/15-fastapi.md) | Building APIs in Python | Python functions as endpoints · Automatic `/docs` · Input validation · Request flow |
 
 ### Machine learning foundations
+
+What machine learning is, and the four ways a model can learn, depending on what kind of data and feedback it gets.
 
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
@@ -117,12 +125,16 @@ The previous section covered the types of learning. Each page here is one classi
 
 ### Deep learning
 
+Neural networks with many layers, how they are trained, and the Transformer architecture that modern LLMs are built on.
+
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
 | 29 | [DL](docs/29-dl.md) | Multi-layer neural networks; epochs, batches, training | Neural networks · Epoch · Batch · Batch size · The training loop |
 | 30 | [Transformers](docs/30-transformers.md) | The architecture behind LLMs: attention, Q/K/V, masking | Architecture · Embeddings · Encoder vs decoder · Self-attention · Query, Key, Value (Q/K/V) · Multi-head attention · Masking |
 
 ### LLMs
+
+Working with large language models in practice: how to ask, why they sometimes make things up, and how text is turned into tokens.
 
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|

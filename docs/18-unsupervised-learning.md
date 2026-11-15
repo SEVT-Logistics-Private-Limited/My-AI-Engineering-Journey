@@ -47,6 +47,8 @@ Common tasks:
 | **Clustering** | Groups similar items together | Customer segments by income and spending |
 | **Anomaly detection** | Finds items that don't fit the pattern | An unusual transaction that may be fraud |
 
+The most common clustering algorithm is [K-Means](28-k-means.md), which has its own page.
+
 ## Supervised vs unsupervised
 
 | | Supervised | Unsupervised |

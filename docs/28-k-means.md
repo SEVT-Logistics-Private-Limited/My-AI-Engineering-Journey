@@ -33,6 +33,8 @@ Imagine you have a supermarket, and you have the monthly spending of your custom
 - It automatically identifies similar customers and groups them.
 - It discovers the groups by looking at the spending patterns. Nobody told it which customer belongs where.
 
+![Monthly spending of nine customers, grouped by K-Means into low, medium and high spenders](../assets/images/k-means.png)
+
 ## Why is it needed?
 
 - Most data has no labels, so supervised algorithms cannot be used on it.

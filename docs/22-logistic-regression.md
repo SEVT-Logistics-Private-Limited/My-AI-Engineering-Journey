@@ -35,6 +35,8 @@ This is where Logistic Regression helps.
 4. For a new email, it combines the features and their weights into a **probability** between 0 and 1.
 5. The probability is turned into a decision, usually: above 0.5 → spam, otherwise not spam.
 
+![An S-shaped curve turning the number of suspicious words into a probability of spam, with a decision threshold at 0.5](../assets/images/logistic-regression.png)
+
 ## Flow diagram
 
 ```text

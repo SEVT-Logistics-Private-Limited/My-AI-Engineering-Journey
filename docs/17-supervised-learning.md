@@ -48,6 +48,20 @@ Many real problems have past examples with known answers: past house sales with 
 
 Quick way to tell them apart: if the answer is a **label from a fixed list**, it is classification. If the answer is a **number on a scale**, it is regression.
 
+### Supervised learning algorithms
+
+Each of these is a concrete algorithm with its own page:
+
+| Algorithm | Problem type | Core idea |
+|---|---|---|
+| [Linear Regression](21-linear-regression.md) | Regression | Fit a straight line through the data |
+| [Logistic Regression](22-logistic-regression.md) | Classification | Learned weights → probability → decision |
+| [Decision Tree](23-decision-tree.md) | Both | Ask a series of questions |
+| [Random Forest](24-random-forest.md) | Both | Many independent trees vote or average |
+| [Gradient Boosting / XGBoost](25-gradient-boosting.md) | Both | Trees built one after another, each fixing earlier mistakes |
+| [KNN](26-knn.md) | Both | Look at the nearest existing examples |
+| [Naive Bayes](27-naive-bayes.md) | Classification | Pick the category with the highest probability |
+
 ## Flow diagram
 
 ```text
