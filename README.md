@@ -4,8 +4,8 @@
 
 **A structured guide to AI engineering, from computer fundamentals to LLMs, RAG and robotics, applied in a live production project.**
 
-![Topics](https://img.shields.io/badge/topics-25-2563eb)
-![Applied in project](https://img.shields.io/badge/applied%20in%20project-13%20of%2025-16a34a)
+![Topics](https://img.shields.io/badge/topics-33-2563eb)
+![Applied in project](https://img.shields.io/badge/applied%20in%20project-13%20of%2033-16a34a)
 ![Deployed on](https://img.shields.io/badge/deployed%20on-Azure-0078d4)
 
 Yodha AI · SEVT Logistics Private Limited
@@ -22,8 +22,8 @@ Each topic is a short, consistent page: a clear explanation, a flow diagram, and
 
 | At a glance | Detail |
 |---|---|
-| **Topics** | 25, grouped into 6 areas |
-| **Applied in our project** | 13 of the 25 topics |
+| **Topics** | 33, grouped into 8 areas |
+| **Applied in our project** | 13 of the 33 topics |
 | **Page format** | Introduction · Definition · Rationale · Mechanism · Flow diagram · Use cases · Application in our project |
 | **Featured project** | [Telugu Voice AI Assistant](projects/telugu-voice-assistant/README.md), deployed on Azure Container Apps |
 | **Author** | Rishi Sasanala |
@@ -41,7 +41,12 @@ Language, vision and robotics  NLP → VLM → VLA → LLM → ROS
                                      ↓
 Tech stack                     RAG → API → FastAPI
                                      ↓
-Machine learning foundations   ML → Supervised → Unsupervised → Semi-Supervised → Reinforcement → DL → Transformers
+Machine learning foundations   ML → Supervised → Unsupervised → Semi-Supervised → Reinforcement
+                                     ↓
+Machine learning algorithms    Linear Regression → Logistic Regression → Decision Tree → Random Forest
+                               → Gradient Boosting → KNN → Naive Bayes → K-Means
+                                     ↓
+Deep learning                  DL → Transformers
                                      ↓
 LLMs                           Prompt Engineering → Hallucination → Tokenization
 ```
@@ -94,16 +99,36 @@ Computers cannot see pictures, only numbers. This section shows how an image is 
 | 18 | [Unsupervised Learning](docs/18-unsupervised-learning.md) | Finds patterns in data without known outputs | No known target outputs · Customer-data example · Clustering · Anomaly detection · Supervised vs unsupervised |
 | 19 | [Semi-Supervised Learning](docs/19-semi-supervised-learning.md) | Learns from a little labelled data plus a lot of unlabelled data | Labelled vs unlabelled data · 1000-emails example · How labels spread to unlabelled data · Supervised vs semi-supervised vs unsupervised |
 | 20 | [Reinforcement Learning](docs/20-reinforcement-learning.md) | An agent learns decisions from rewards and penalties | Agent · Environment · Action · Reward and penalty · Bicycle example · The learning loop |
-| 21 | [DL](docs/21-dl.md) | Multi-layer neural networks; epochs, batches, training | Neural networks · Epoch · Batch · Batch size · The training loop |
-| 22 | [Transformers](docs/22-transformers.md) | The architecture behind LLMs: attention, Q/K/V, masking | Architecture · Embeddings · Encoder vs decoder · Self-attention · Query, Key, Value (Q/K/V) · Multi-head attention · Masking |
+
+### Machine learning algorithms
+
+The previous section covered the types of learning. Each page here is one classic algorithm: seven supervised ones, then K-Means, which is unsupervised.
+
+| # | Topic | Summary | Topics inside |
+|---|---|---|---|
+| 21 | [Linear Regression](docs/21-linear-regression.md) | Predicts a continuous number by fitting a straight line | Regression · Experience → salary example · Fitting a line · Predicting a new value |
+| 22 | [Logistic Regression](docs/22-logistic-regression.md) | Predicts the probability of a class, then classifies | Classification · 1000-emails spam example · Features and learned weights · Probability → decision |
+| 23 | [Decision Tree](docs/23-decision-tree.md) | Reaches a decision by asking a series of questions | Series of questions · Play outside or stay inside example · Learning from historical examples |
+| 24 | [Random Forest](docs/24-random-forest.md) | Many independent Decision Trees combined | Multiple trees · Voting (classification) · Averaging (regression) · Independent trees |
+| 25 | [Gradient Boosting / XGBoost](docs/25-gradient-boosting.md) | Models built one after another, each fixing earlier mistakes | Sequential models · 25 × 4 maths example · Random Forest vs boosting · XGBoost |
+| 26 | [KNN](docs/26-knn.md) | Predicts from the nearest existing examples | Nearest examples · Movie example · What K means |
+| 27 | [Naive Bayes](docs/27-naive-bayes.md) | Uses probability to pick the most likely category | Probability per category · Email-words example · Naive Bayes vs Logistic Regression |
+| 28 | [K-Means](docs/28-k-means.md) | Groups similar data points into K clusters | Clustering · Supermarket-customers example · Low / medium / high spenders · K-Means vs KNN |
+
+### Deep learning
+
+| # | Topic | Summary | Topics inside |
+|---|---|---|---|
+| 29 | [DL](docs/29-dl.md) | Multi-layer neural networks; epochs, batches, training | Neural networks · Epoch · Batch · Batch size · The training loop |
+| 30 | [Transformers](docs/30-transformers.md) | The architecture behind LLMs: attention, Q/K/V, masking | Architecture · Embeddings · Encoder vs decoder · Self-attention · Query, Key, Value (Q/K/V) · Multi-head attention · Masking |
 
 ### LLMs
 
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
-| 23 | [Prompt Engineering](docs/23-prompt-engineering.md) | Zero/one/few-shot, chain of thought, role prompting | Zero-shot · One-shot · Few-shot · Chain of thought · Role prompting |
-| 24 | [Hallucination](docs/24-hallucination.md) | When an LLM makes things up, and how to reduce it | What hallucination is · Why it happens · How to reduce it (RAG, prompts, validation, temperature, citations) |
-| 25 | [Tokenization](docs/25-tokenization.md) | Text → tokens → token IDs | Token · Tokenization · Token IDs · Why tokens matter (limits and cost) |
+| 31 | [Prompt Engineering](docs/31-prompt-engineering.md) | Zero/one/few-shot, chain of thought, role prompting | Zero-shot · One-shot · Few-shot · Chain of thought · Role prompting |
+| 32 | [Hallucination](docs/32-hallucination.md) | When an LLM makes things up, and how to reduce it | What hallucination is · Why it happens · How to reduce it (RAG, prompts, validation, temperature, citations) |
+| 33 | [Tokenization](docs/33-tokenization.md) | Text → tokens → token IDs | Token · Tokenization · Token IDs · Why tokens matter (limits and cost) |
 
 ## Featured project
 
@@ -138,7 +163,7 @@ User hears the answer
 
 ```text
 .
-├── docs/         25 topic pages, numbered in reading order
+├── docs/         33 topic pages, numbered in reading order
 ├── projects/     Telugu Voice AI Assistant write-up and screenshots
 ├── assets/       Images used in the topic pages
 └── ROADMAP.md    Covered and planned topics
