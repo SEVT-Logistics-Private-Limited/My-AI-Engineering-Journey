@@ -105,7 +105,7 @@ See [Transformers](../../docs/31-transformers.md) and [Tokenization](../../docs/
 
 ## Topics covered in this project
 
-The project uses **14 of the 34 topics** in this handbook. Each topic page has an **"In our project"** section with the full details.
+The topics marked **Yes** in the table below are the ones the project uses. Each topic page has an **"In our project"** section with the full details.
 
 | # | Topic | Used? | How we used it |
 |---|---|---|---|

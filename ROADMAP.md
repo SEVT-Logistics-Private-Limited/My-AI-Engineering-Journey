@@ -4,7 +4,7 @@
 
 ## Covered
 
-All 34 topics are complete: [see the topic list](README.md#topics).
+All topics are complete: [see the topic list](README.md#topics).
 
 ## Planned
 
