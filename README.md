@@ -24,7 +24,7 @@ Each topic is a short, consistent page: a clear explanation, a flow diagram, and
 |---|---|
 | **Topics** | 34, grouped into 8 areas |
 | **Applied in our project** | 14 of the 34 topics |
-| **Page format** | Introduction · Definition · Rationale · Mechanism · Flow diagram · Use cases · Application in our project |
+| **Page format** | Introduction · What it is · Why it is needed · How it works · Flow diagram · Real-world use cases · In our project |
 | **Featured project** | [Telugu Voice AI Assistant](projects/telugu-voice-assistant/README.md), deployed on Azure Container Apps |
 | **Author** | Rishi Sasanala |
 
@@ -81,7 +81,7 @@ The main families of AI models: ones that understand language, ones that also se
 
 | # | Topic | Summary | Topics inside |
 |---|---|---|---|
-| 9 | [NLP](docs/09-nlp.md) | Branch of AI that understands human language | What NLP is · Understanding a request: intent, action and required information |
+| 9 | [NLP](docs/09-nlp.md) | Branch of AI that understands human language | What NLP is · What you are asking · What action you want · What information it needs |
 | 10 | [VLM](docs/10-vlm.md) | Sees and understands (image + text) | Image + text understanding · How a VLM reads an image |
 | 11 | [VLA](docs/11-vla.md) | Sees, understands and acts | Vision → language → action · VLM vs VLA |
 | 12 | [LLM](docs/12-llm.md) | Trained on huge text to understand and generate language | GPT-style models · How an LLM reads text · How it generates an answer · Temperature |
@@ -95,7 +95,7 @@ The building blocks used to turn a model into a working product: grounding answe
 |---|---|---|---|
 | 14 | [RAG](docs/14-rag.md) | Retrieve documents, then let the LLM answer | RAG vs fine-tuning · Document ingestion · Chunking · Embedding · Retrieval · Evaluating a RAG system |
 | 15 | [API](docs/15-api.md) | How two software systems talk: request → response | Request → response · Types of APIs · REST and its methods · SOAP · REST vs SOAP |
-| 16 | [FastAPI](docs/16-fastapi.md) | Building APIs in Python | Python functions as endpoints · Automatic `/docs` · Input validation · Request flow |
+| 16 | [FastAPI](docs/16-fastapi.md) | Building APIs in Python | Python functions as endpoints · Automatic `/docs` · Input checking · Request flow |
 
 ### Machine learning foundations
 
@@ -176,7 +176,7 @@ User hears the answer
 
 ```text
 .
-├── docs/         34 topic pages, numbered in reading order
+├── docs/         Topic pages, numbered in reading order
 ├── projects/     Telugu Voice AI Assistant write-up and screenshots
 ├── assets/       Images used in the topic pages
 └── ROADMAP.md    Covered and planned topics
