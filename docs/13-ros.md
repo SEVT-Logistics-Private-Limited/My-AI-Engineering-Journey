@@ -57,7 +57,53 @@ Camera sees the bottle → ROS → VLA decides "pick it up" → ROS → Arm move
 
 ## In our project
 
-**Not used yet.** ROS is for robots, and our project is a software voice assistant.
+### Vision-RL Pick-and-Lift
+
+**Not used yet.** Our robot runs in a simulator as one Python program, so its parts talk through ordinary function calls and don't need ROS. The parts are already split the way ROS splits a robot into nodes, which makes ROS the natural next step when the project moves to a real robot. [Project page →](../projects/vision-rl-pickplace/README.md)
+
+How each part would map to ROS 2:
+
+| Part of our robot | Today, in simulation | With ROS 2, on a real robot |
+|---|---|---|
+| **Camera** | `RGBDCamera` renders colour and depth images | A camera driver node (for example, for an Intel RealSense) publishes the images and the camera's settings (`sensor_msgs/Image`, `sensor_msgs/CameraInfo`) |
+| **Computer vision** | `ColorObjectDetector` finds the cube and its 3D position | A perception node publishes the cube's position (`geometry_msgs/PoseStamped`) |
+| **State estimator** | `ObjectStateEstimator` keeps tracking the cube when the arm hides it | An estimator node combines the cube position with the arm's joint readings (`/joint_states`) |
+| **Learned policy** | The SAC policy chooses the next hand move, 24 times a second | A policy node publishes hand moves (`geometry_msgs/TwistStamped`) and gripper commands |
+| **Arm control** | `PandaController` turns hand moves into joint commands (inverse kinematics) | MoveIt Servo and the arm's driver move the real motors |
+
+```text
+Today: one program, parts call each other directly
+Camera → Computer vision → State estimator → Policy → Inverse kinematics → Simulated arm
+
+With ROS 2: separate nodes exchange messages
+Camera node
+    ↓ colour + depth images
+Perception node
+    ↓ cube position
+Estimator node  ←── /joint_states (arm sensors)
+    ↓ tracked cube position
+Policy node
+    ↓ hand moves, 24 times a second
+MoveIt Servo + arm driver
+    ↓
+Real robot arm
+```
+
+Why not ROS yet:
+- **No hardware yet.** In simulation, one program is simpler and faster. ROS earns its place when real cameras and motors need connecting.
+- **Exactly repeatable results.** One program steps the simulator in lockstep, so the same seed always gives the same result. Separate ROS nodes run on their own timing, which makes exact repeats harder.
+- **Simple setup and testing.** The project installs with `pip` and runs its 47 automated tests on every change, with no ROS installation.
+
+Already ROS-ready:
+- The computer vision needs only colour, depth, the camera's intrinsics (`K`), and where the camera is and which way it points (`T_world_cam`): exactly what a ROS camera driver provides (`Image`, `CameraInfo` and a `tf` transform).
+- Each part has one job and a small interface, so each can become one node.
+- The state estimator uses only signals every real arm reports (joint angles and gripper width), which ROS publishes on `/joint_states`.
+
+Next step: wrap each part as a ROS 2 node, then run the same pipeline on a real arm, after the domain-randomisation step in the project [roadmap](../projects/vision-rl-pickplace/README.md#limitations-and-roadmap).
+
+### Telugu Voice AI Assistant
+
+**Not used yet.** ROS is for robots, and our voice assistant is software only.
 
 ---
 

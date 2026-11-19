@@ -5,7 +5,7 @@
 **A structured guide to AI engineering, from computer fundamentals to LLMs, RAG and robotics, applied in a live production project.**
 
 ![Topics](https://img.shields.io/badge/topics-34-2563eb)
-![Applied in project](https://img.shields.io/badge/applied%20in%20project-14%20of%2034-16a34a)
+![Applied in projects](https://img.shields.io/badge/applied%20in%20projects-15%20of%2034-16a34a)
 ![Deployed on](https://img.shields.io/badge/deployed%20on-Azure-0078d4)
 
 Yodha AI · SEVT Logistics Private Limited
@@ -18,14 +18,15 @@ Yodha AI · SEVT Logistics Private Limited
 
 ## Overview
 
-Each topic is a short, consistent page: a clear explanation, a flow diagram, and how the concept is applied in our live **Telugu Voice AI Assistant**.
+Each topic is a short, consistent page: a clear explanation, a flow diagram, and how the concept is applied in our projects: the live **Telugu Voice AI Assistant** and the **Vision-RL Pick-and-Lift** robot.
 
 | At a glance | Detail |
 |---|---|
 | **Topics** | 34, grouped into 8 areas |
-| **Applied in our project** | 14 of the 34 topics |
+| **Applied in our projects** | 15 of the 34 topics: 14 in the voice assistant, plus Reinforcement Learning in the robot |
 | **Page format** | Introduction · What it is · Why it is needed · How it works · Flow diagram · Real-world use cases · In our project |
 | **Featured project** | [Telugu Voice AI Assistant](projects/telugu-voice-assistant/README.md), deployed on Azure Container Apps |
+| **Robotics project** | [Vision-RL Pick-and-Lift](projects/vision-rl-pickplace/README.md), a robot arm that learns to pick up objects, in simulation |
 | **Author** | Rishi Sasanala · [rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) |
 
 ## Learning path
@@ -205,7 +206,7 @@ For comparison, a hand-written version with no learning also scores 100%. Both a
 | [Project overview](projects/vision-rl-pickplace/README.md) | Executive summary, results, how it works and quickstart |
 | [Results](projects/vision-rl-pickplace/README.md#results) | Test results and the training curve |
 | [Engineering challenges](projects/vision-rl-pickplace/README.md#engineering-challenges) | Problems found and solved during development |
-| [Concepts applied](docs/21-reinforcement-learning.md) | [VLA](docs/11-vla.md) · [ROS](docs/13-ros.md) · [Reinforcement Learning](docs/21-reinforcement-learning.md), explained in this repository |
+| [Topics covered](projects/vision-rl-pickplace/README.md#topics-covered-in-this-project) | How the robot uses [Reinforcement Learning](docs/21-reinforcement-learning.md#vision-rl-pick-and-lift) and part of [VLA](docs/11-vla.md#vision-rl-pick-and-lift), and how it maps to [ROS](docs/13-ros.md#vision-rl-pick-and-lift) |
 | [Source code](projects/vision-rl-pickplace) | Code, trained model and 47 automated tests |
 
 ## Repository structure
