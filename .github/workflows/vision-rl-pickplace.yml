@@ -38,5 +38,10 @@ jobs:
         run: pytest -q
       - name: Baseline smoke run
         run: python scripts/run_baseline.py --episodes 5
-      - name: Trained policy smoke run
-        run: python scripts/evaluate.py --controller rl --episodes 5
+      # Regression gates: fail if the committed policy stops working, not just if
+      # it fails to load. Thresholds allow one failure, because PyBullet builds
+      # (prebuilt wheel vs source) can differ numerically.
+      - name: Trained policy (ground truth) regression gate
+        run: python scripts/evaluate.py --controller rl --episodes 10 --min-success 0.9
+      - name: Trained policy (camera + state estimator) regression gate
+        run: python scripts/evaluate.py --controller rl --obs-source perception --episodes 5 --min-success 0.8

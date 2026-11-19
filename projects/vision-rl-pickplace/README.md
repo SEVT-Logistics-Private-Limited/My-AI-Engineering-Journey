@@ -7,11 +7,11 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-2563eb)
 ![Simulator](https://img.shields.io/badge/sim-PyBullet-16a34a)
 ![RL](https://img.shields.io/badge/RL-SAC%20(Stable--Baselines3)-7c3aed)
-![Tests](https://img.shields.io/badge/tests-28%20passing-16a34a)
+![Tests](https://img.shields.io/badge/tests-37%20passing-16a34a)
 
 <img src="assets/rl_policy.gif" width="420" alt="Trained SAC policy picking up the cube"> <img src="assets/baseline.gif" width="420" alt="Vision + IK baseline picking up the cube">
 
-*Left: learned SAC policy. Right: classical Vision + IK baseline.*
+*Left: learned SAC policy acting on camera estimates. Right: classical Vision + IK baseline.*
 
 </div>
 
@@ -19,23 +19,31 @@
 
 ## Results
 
-Evaluated on **held-out seeds** (10 000+, disjoint from training), random cube position over a 25 × 40 cm workspace.
+Test seeds 30000–30099 were evaluated **once, after development was frozen**. They were never used for training, checkpoint selection or debugging. Each episode places the cube at a random position in a 25 × 40 cm workspace.
 
-| Controller | Object position from | Success | Episodes |
-|---|---|---|---|
-| Vision + IK baseline | Camera (perception) | **100%** (100/100) | 100 |
-| SAC policy | Simulator ground truth (as trained) | __RL_GT__ | 100 |
-| SAC policy | Camera (perception + tracker) | __RL_PERC__ | 100 |
+| Controller | Object position from | Success (100 episodes) |
+|---|---|---|
+| Vision + IK baseline | Camera | __BASELINE__ |
+| SAC policy | Simulator ground truth (as trained) | __RL_GT__ |
+| SAC policy | **Camera + state estimator** | __RL_PERC__ |
+| SAC policy, cube yaw ±45° (never seen in training) | Simulator ground truth | __RL_YAW__ |
 
-| Perception metric | Value |
+| Perception metric (100 placements vs ground truth) | Value |
 |---|---|
-| 3D localisation error (top face) | 1.8 mm mean · 2.8 mm max |
+| 3D localisation error, top face | 1.8 mm mean · 2.8 mm max |
 | Yaw error | 0.5° mean · 3.8° max |
-| Detection rate (unoccluded) | 100 / 100 |
+| Detection rate, unoccluded | 100 / 100 |
 
-Perception metrics are measured over 100 random placements against simulator ground truth.
+**Training:** SAC, 60 000 environment steps (validation success reaches 100% by about 35 000), __TRAIN_TIME__ on a 4-core CPU, no GPU.
 
-Training: SAC, __STEPS__ environment steps, __TRAIN_TIME__ on a 4-core CPU, no GPU.
+**Reproducibility:** every episode is a pure function of its seed (see [engineering log](#engineering-log), item 4), so `python scripts/evaluate.py` reproduces these numbers on the same PyBullet build.
+
+| Seeds | Used for |
+|---|---|
+| 0 (one stream) | training episodes |
+| 1000 (one stream) | validation during training: picks the saved checkpoint |
+| 10000+, 20000+ | development: debugging perception and determinism |
+| **30000–30099** | **test: the numbers above** |
 
 ## Architecture
 
@@ -43,13 +51,15 @@ Training: SAC, __STEPS__ environment steps, __TRAIN_TIME__ on a 4-core CPU, no G
 flowchart LR
     CAM["RGB-D camera<br/>(PyBullet, 320×240)"] --> PER["Perception<br/>HSV mask → contour →<br/>top-face centroid + depth"]
     PER --> LOC["3D localisation<br/>pinhole deprojection<br/>K⁻¹ · (u, v, d) → T_world_cam"]
-    LOC --> TRK["State estimate<br/>tracker holds last fix<br/>under occlusion"]
-    TRK --> IK["IK planner<br/>pre-grasp → grasp → lift"]
-    TRK --> RL["SAC policy<br/>Δxyz + gripper"]
+    LOC --> EST["State estimator<br/>area-gated detections +<br/>grasp-aware attachment"]
+    PROP["Proprioception<br/>forward kinematics +<br/>gripper width"] --> EST
+    EST --> IK["IK planner<br/>pre-grasp → grasp → lift"]
+    EST --> RL["SAC policy<br/>Δxyz + gripper"]
     IK --> CTRL["Cartesian controller<br/>damped-least-squares IK<br/>→ joint position targets"]
     RL --> CTRL
     CTRL --> SIM["PyBullet<br/>Franka Panda, 240 Hz"]
     SIM --> CAM
+    SIM --> PROP
 ```
 
 Both controllers share the same perception and the same low-level Cartesian controller. Only the decision layer differs, so their results are directly comparable.
@@ -59,14 +69,29 @@ Both controllers share the same perception and the same low-level Cartesian cont
 | Decision | Why |
 |---|---|
 | **Perception consumes only `(rgb, depth, K, T_world_cam)`** | Same interface as a RealSense/ZED driver, so the module transfers to hardware unchanged. |
-| **Top-face depth gating** | Perspective makes the cube's side faces visible and biases the centroid. Keeping only pixels within 1 cm of the nearest surface cut the mean error from 3.3 mm to 1.8 mm (max 6.1 → 2.8 mm) over 100 placements. |
+| **Top-face depth gating** | Perspective makes the cube's side faces visible and biases the centroid. Keeping only pixels within 1 cm of the nearest surface cut the mean error from 3.3 mm to 1.8 mm (max 6.1 → 2.8 mm). |
 | **Yaw measured in the world frame** | The min-area rectangle edge is deprojected to 3D before taking `atan2`, so no camera-mounting convention is hard-coded. |
 | **RL acts in Cartesian space (Δxyz + gripper)** | A 4-D action through IK is far more sample-efficient than 9-D joint control, which is what makes CPU-only training feasible. |
-| **Train on ground truth, evaluate on perception** | Rendering a camera frame costs ~50 ms vs ~1.5 ms per physics step. Evaluating the trained policy on perceived state measures the estimation gap explicitly instead of hiding it. |
-| **Tracker holds the last confident detection** | The overhead camera loses the cube under the gripper. Acting on the last good fix beats acting on nothing. |
+| **Train on ground truth, evaluate on perception** | Rendering a camera frame costs ~50 ms vs ~1.5 ms per physics step. Evaluating on perceived state measures the estimation gap explicitly instead of hiding it. |
+| **State estimator fuses camera and proprioception** | The camera alone fails once the arm is in view. Encoders and gripper width exist on any real arm, so the estimator uses no simulator state. |
+| **Fresh physics world every episode** | Moving bodies directly leaves solver caches behind, which made results depend on episode order. A rebuild costs 60 ms. |
 | **Reward always uses true state** | The reward is a training signal, not a policy input, so it should not inherit perception noise. |
+| **Config rejects rewards that allow hovering** | The step penalty must exceed the best per-step shaping reward, or the agent learns never to finish. This is checked at load time. |
 | **Typed, validated YAML config** | Unknown or missing keys fail at load time; no silent defaults. |
-| **One physics client per scene** | Environments are isolated, so vectorised training works without global state. |
+
+## Engineering log
+
+What broke during development, how it was found, and what fixed it. Each fix is covered by a test.
+
+| # | Symptom | Root cause | Fix | Effect |
+|---|---|---|---|---|
+| 1 | Evaluation reward rose during training, but success stayed at 0% | **Reward hacking.** Holding the cube just below the success height collected grasp and lift bonuses every step, worth ~15 discounted, more than the one-time +10 success bonus. | A constant step penalty larger than the best per-step shaping reward, enforced by config validation | 0% → 85% success at 20k steps, 100% from 35k |
+| 2 | Policy: 100% with ground truth, **21%** with the camera | (a) The estimate stayed at the table while the cube was lifted, so the policy kept re-grasping. (b) Detections of a partly hidden cube (42 px of 330) were accepted, giving biased positions. | `ObjectStateEstimator`: trust a detection only if its blob is ≥ 80% of the unoccluded area; while the cube is held, move its estimate with the hand (forward kinematics) | 21% → 98% on development seeds |
+| 3 | Estimate dragged 6 cm away during a failed grasp | **False attachment.** A corner pinch (width 0.65 × cube size) counted as a grasp. | Hold band from cube geometry: face-to-face (1.0×) to across the diagonal (√2×). Attach only once the fingers are still for two frames. | 98% → 100% on development seeds |
+| 4 | Same seed, different outcome | **Non-deterministic resets.** Bullet keeps solver and contact caches across resets; `saveState`/`restoreState` did not clear them (verified). Trajectories diverged by up to 6 cm depending on the previous episode. | Rebuild the physics world each episode | Bit-identical rollouts per seed; regression test |
+| 5 | Wrist reached only ~55% of the commanded yaw | IK null-space rest pose pinned joint 7 at neutral, and convergence checked position only | Bias the rest pose by the target yaw; require orientation convergence | Yaw error < 3° |
+
+One rule was **removed**: a check that let a partial detection override a stale estimate. It fired 0 times in 100 development episodes, so it added complexity without measured benefit.
 
 ## Quickstart
 
@@ -81,14 +106,14 @@ pip install -r requirements.txt
 ```bash
 python scripts/detect_object.py --trials 10          # Phase 1: camera → 3D position
 python scripts/run_baseline.py --episodes 20         # Phase 2: Vision + IK pick-and-place
-python scripts/evaluate.py --controller rl           # Phase 3: trained policy (models/sac_picklift.zip)
+python scripts/evaluate.py --controller rl           # Phase 3: trained policy, test seeds
 python scripts/evaluate.py --controller rl --obs-source perception
-python scripts/train_rl.py                           # retrain from scratch (~30 min on 4 CPU cores)
+python scripts/train_rl.py                           # retrain from scratch (__TRAIN_TIME_SHORT__ on 4 CPU cores)
 tensorboard --logdir runs/
-pytest -q                                            # 28 tests, ~10 s
+pytest -q                                            # 37 tests, ~10 s
 ```
 
-Add `--gui` to `run_baseline.py` to watch in the PyBullet window, or `--video out.gif` to `evaluate.py` to record.
+Add `--gui` to `run_baseline.py` to watch in the PyBullet window, `--video out.gif` to `evaluate.py` to record, or `--min-success 0.9` to make `evaluate.py` fail below a success rate (used in CI).
 
 ## The RL task
 
@@ -96,9 +121,9 @@ Add `--gui` to `run_baseline.py` to watch in the PyBullet window, or `--video ou
 |---|---|
 | **Observation (10)** | end-effector xyz · gripper width · object xyz · object − end-effector |
 | **Action (4)** | Δx, Δy, Δz ∈ [−1, 1] × 3 cm · gripper (> 0 closes) |
-| **Reward** | −‖ee − object‖ (reach) · +0.25 while both fingers touch (grasp) · +10 × lift height, capped at 5 cm (lift) · +10 on success |
+| **Reward** | −1 per step · −‖ee − object‖ (reach) · +0.25 while both fingers touch (grasp) · +10 × lift height, capped at 5 cm (lift) · +10 on success |
 | **Termination** | success (grasped and lifted ≥ 5 cm) or 100 steps (~4 s at 24 Hz) |
-| **Reset** | cube at a random position; gripper starts at a random point 15–25 cm above the workspace |
+| **Reset** | fresh physics world; cube at a random position; gripper starts 15–25 cm above a random point in the workspace |
 
 A hand-written scripted expert solves the task through the same action API (tested in `tests/test_env.py`). That separates "is the environment solvable?" from "did the agent learn?", which is the first thing to rule out when RL fails.
 
@@ -109,9 +134,9 @@ vision-rl-pickplace/
 ├── config/default.yaml        Simulation, camera, perception, grasp and RL settings
 ├── src/pickplace/
 │   ├── config.py              Typed + validated config loading
-│   ├── sim.py                 PyBullet scene: Panda, cube, contacts
+│   ├── sim.py                 PyBullet scene: Panda, cube, contacts, deterministic reset
 │   ├── camera.py              RGB-D camera with explicit intrinsics/extrinsics
-│   ├── perception.py          Detection, 3D deprojection, yaw, tracker
+│   ├── perception.py          Detection, 3D deprojection, yaw, state estimator
 │   ├── kinematics.py          IK + Cartesian control of the Panda
 │   ├── pipeline.py            Classical Vision → IK → grasp baseline
 │   ├── env.py                 Gymnasium environment (PickLift-v0)
@@ -120,20 +145,21 @@ vision-rl-pickplace/
 │   ├── detect_object.py       Phase 1 milestone
 │   ├── run_baseline.py        Phase 2 milestone
 │   ├── train_rl.py            Phase 3: SAC / PPO training
-│   └── evaluate.py            Success rates and video recording
-├── models/sac_picklift.zip    Trained policy
-├── tests/                     28 tests: config, perception, IK, baseline, env
+│   └── evaluate.py            Success rates, video recording, CI gate
+├── models/sac_picklift.zip    Trained policy (best validation checkpoint)
+├── tests/                     37 tests: config, perception, estimator, IK, baseline, env, determinism
 └── assets/                    GIFs and debug images
 ```
 
 ## Limitations and future work
 
 - **Single, uniquely coloured object under fixed lighting.** HSV thresholding is the weakest link for the real world. Next step: a learned detector or instance segmentation, then point-cloud grasp pose estimation for clutter.
-- **Fixed cube yaw during RL training.** The baseline handles any yaw; the policy was trained at yaw 0 to keep CPU training short. Adding yaw to the observation and a wrist-rotation action is the natural extension.
-- **State-based RL.** The policy sees an estimated 3D position, not pixels. Visual RL (an image encoder + data augmentation, e.g. DrQ) would remove the hand-designed perception stage at a much higher sample cost.
+- **Hidden displacement.** If the hand knocks the cube while the arm fully hides it from the overhead camera, the estimate cannot recover until the cube is visible again. This caused a failure during development (seed 20049). A wrist camera or a second viewpoint would close the gap.
+- **No wrist rotation in the policy.** The policy still picks up rotated cubes (±45°, never seen in training) because the 8 cm gripper opening is wider than the cube's 5.7 cm diagonal, so closing the fingers aligns it. Elongated objects would need a yaw action.
+- **State-based RL.** The policy sees an estimated 3D position, not pixels. Visual RL (an image encoder with data augmentation, e.g. DrQ) would remove the hand-designed perception stage at a much higher sample cost.
 - **No domain randomisation.** Friction, mass, camera pose and lighting are fixed, so sim-to-real transfer is untested. Randomising them during training is required before hardware.
-- **Pick-and-lift, not place.** Adding a goal position (goal-conditioned policy, Hindsight Experience Replay) extends this to full pick-and-place.
-- **Overhead camera occlusion.** The tracker assumes the object is static until grasped. A wrist camera or a second viewpoint would allow closed-loop re-grasping.
+- **Pick-and-lift, not place.** A goal position (goal-conditioned policy with Hindsight Experience Replay) would extend this to full pick-and-place.
+- **Determinism is per build.** Episodes are bit-identical on a given PyBullet build, but different builds (for example a source build vs a prebuilt wheel) can differ numerically.
 
 ## Related topics in this repository
 
