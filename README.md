@@ -174,7 +174,7 @@ User hears the answer
 
 ## Robotics project
 
-**Vision-RL Pick-and-Place.** A computer vision and robot learning project: a simulated Franka Panda locates a cube with an RGB-D camera, tracks it through occlusion with a camera–proprioception state estimator, and picks it up with a reinforcement-learning policy (SAC) trained on a CPU.
+**Vision-RL Pick-and-Lift.** A computer vision and robot learning project: a simulated Franka Panda locates a cube with an RGB-D camera, tracks it through occlusion with a camera–proprioception state estimator, and picks it up with a reinforcement-learning policy (SAC) trained on a CPU.
 
 <img src="projects/vision-rl-pickplace/assets/rl_policy.gif" width="520" alt="Trained SAC policy, acting on camera estimates, picking up a cube with a Franka Panda arm">
 
@@ -193,14 +193,16 @@ Computer vision: OpenCV segmentation → 3D localisation
         ↓
 State estimation: camera + joint encoders + gripper width
         ↓
-Robot learning: SAC policy (or a classical IK baseline)
+Robot learning: SAC policy
         ↓
 Control: inverse kinematics → Franka Panda in PyBullet
 ```
 
+A classical Vision + IK baseline (100% success) needs no state estimator: it takes one photo before the arm moves, then follows a fixed grasp sequence. Both are scored by the same rule: the cube is held and lifted at least 5 cm.
+
 | Resource | Link |
 |---|---|
-| **Project overview** | [Vision-RL Pick-and-Place](projects/vision-rl-pickplace/README.md) |
+| **Project overview** | [Vision-RL Pick-and-Lift](projects/vision-rl-pickplace/README.md) |
 | **Results and training curve** | [Results](projects/vision-rl-pickplace/README.md#results) |
 | **Problems solved during development** | [Engineering challenges](projects/vision-rl-pickplace/README.md#engineering-challenges) |
 | **Concepts applied** | [VLA](docs/11-vla.md) · [ROS](docs/13-ros.md) · [Reinforcement Learning](docs/21-reinforcement-learning.md) |
@@ -211,7 +213,7 @@ Control: inverse kinematics → Franka Panda in PyBullet
 ```text
 .
 ├── docs/         Topic pages, numbered in reading order
-├── projects/     Telugu Voice AI Assistant write-up; Vision-RL Pick-and-Place code
+├── projects/     Telugu Voice AI Assistant write-up; Vision-RL Pick-and-Lift code
 ├── assets/       Images used in the topic pages
 └── ROADMAP.md    Covered and planned topics
 ```

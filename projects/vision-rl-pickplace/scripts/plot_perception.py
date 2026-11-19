@@ -102,13 +102,13 @@ def render(cfg, frame, det, truth, camera, theme: str, out: Path) -> None:
     ax.set_xlabel("blue: top face, used · gray: side faces, rejected",
                   color=t["ink2"], fontsize=8.5, labelpad=8)
 
-    # 3. Height above the table from depth (the camera looks straight down).
+    # 3. Height above the floor from depth (the camera looks straight down).
     ax = axes[2]
     height_cm = (cfg.camera.eye[2] - frame.depth[crop]) * 100
     cmap = LinearSegmentedColormap.from_list("seq", SEQUENTIAL[theme])
     im = ax.imshow(height_cm, extent=extent, interpolation="nearest", cmap=cmap, vmin=0, vmax=4.5)
     ax.set_title("Height from depth", loc="left", color=t["ink"], fontsize=11, pad=8)
-    ax.set_xlabel("height above the table", color=t["ink2"], fontsize=8.5, labelpad=8)
+    ax.set_xlabel("height above the floor", color=t["ink2"], fontsize=8.5, labelpad=8)
     bar = fig.colorbar(im, cax=cax, ticks=[0, 2, 4])
     bar.ax.set_yticklabels(["0 cm", "2 cm", "4 cm"])
     bar.ax.tick_params(colors=t["muted"], labelsize=8.5, length=0)

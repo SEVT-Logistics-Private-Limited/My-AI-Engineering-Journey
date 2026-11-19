@@ -1,4 +1,4 @@
-"""Phase 2 milestone: classical Vision + IK pick-and-place, no learning.
+"""Phase 2 milestone: classical Vision + IK pick-and-lift, no learning.
 
     python scripts/run_baseline.py --episodes 50          # headless benchmark
     python scripts/run_baseline.py --episodes 3 --gui     # watch it in the PyBullet window

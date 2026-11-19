@@ -125,7 +125,7 @@ class ObjectStateEstimator:
       steady for two consecutive frames), the object is treated as rigidly
       attached to the end-effector and its estimate follows forward kinematics.
       A grasp that is still slipping or closing never looks settled. On release
-      the object is assumed to come to rest on the table.
+      the object is assumed to come to rest on the floor.
 
     Everything used here (camera, joint encoders, gripper width) exists on a
     real robot; no simulator state is read.
@@ -173,7 +173,7 @@ class ObjectStateEstimator:
         if self.attached and not in_band:
             self.attached = False
             self.position = self.position.copy()
-            self.position[2] = self.object_size / 2      # released: comes to rest on the table
+            self.position[2] = self.object_size / 2      # released: comes to rest on the floor
         elif not self.attached and settled and self._contact_offset is not None:
             self.attached = True
             self._offset = self._contact_offset
