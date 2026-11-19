@@ -184,7 +184,7 @@ User hears the answer
 | **3D localisation error** | 1.8 mm mean, from a single RGB-D frame |
 | **Generalisation** | 100% on cube rotations never seen in training |
 | **Training** | 18 minutes on a 4-core CPU, no GPU |
-| **Engineering** | 46 tests; CI gates on the trained policy's success rate |
+| **Engineering** | 47 tests; CI gates on the trained policy's success rate |
 
 ```text
 RGB-D camera (overhead, simulated)
