@@ -82,5 +82,7 @@ class PickPipeline:
         ctl.actuate_gripper(closed=True, steps=10, on_step=cb)  # hold: a slipping grasp shows here
 
         lifted = self.scene.object_state().position[2] - z0
-        outcome = Outcome.SUCCESS if lifted >= g.success_lift and self.scene.is_grasped() else Outcome.GRASP_FAILED
+        # Same success rule as the RL environment: held, and lifted at least task.success_lift.
+        held = self.scene.is_grasped()
+        outcome = Outcome.SUCCESS if held and lifted >= self.cfg.task.success_lift else Outcome.GRASP_FAILED
         return PickResult(outcome, detection, float(lifted))

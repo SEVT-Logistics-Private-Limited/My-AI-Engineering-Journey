@@ -49,6 +49,11 @@ perception:
   min_area_ratio: 0.8           # state estimator trusts a blob only if >= 80% of the unoccluded area
   morph_kernel: 3
 
+task:
+  # One success rule for every controller (scripted baseline and learned policy):
+  # the cube is held by both fingers and has risen at least this far.
+  success_lift: 0.05
+
 grasp:
   pregrasp_height: 0.12         # above object centre
   lift_height: 0.20
@@ -56,7 +61,6 @@ grasp:
   position_tolerance: 0.005
   max_move_steps: 120           # control steps per waypoint before giving up
   gripper_settle_steps: 20
-  success_lift: 0.08            # object must rise this much to count as picked
 
 rl:
   algorithm: SAC
@@ -73,7 +77,6 @@ rl:
     # Keeps every per-step reward negative (max shaped gain is 0.25 + 10*0.05 = 0.75),
     # so finishing always beats hovering with the cube to farm grasp/lift bonuses.
     step_penalty: 1.0
-  success_lift: 0.05
   sac:
     learning_rate: 0.0003
     buffer_size: 300000

@@ -15,7 +15,7 @@ Reward (dense, staged):
     - step_penalty                             always (see below)
     - distance_weight * ||ee - object||        always (reach)
     + grasp_bonus                              while both fingers touch the object
-    + lift_weight * clip(lift, 0, success_lift) while grasped (lift)
+    + lift_weight * clip(lift, 0, task.success_lift) while grasped (lift)
     + success_bonus                            once, and the episode terminates
 
 The step penalty is larger than the best possible shaped reward per step.
@@ -79,7 +79,7 @@ class PickLiftEnv(gym.Env):
         self._object_z0 = 0.0
         self._steps = 0
         self._gripper_closed = False
-        # Fallback if the object is never seen: centre of the spawn region, on the table.
+        # Fallback if the object is never seen: centre of the spawn region, on the floor.
         self._object_prior = np.array([np.mean(ws.object_x), np.mean(ws.object_y), self.cfg.object.size / 2])
         self._object_estimate = self._object_prior.copy()
 
@@ -175,8 +175,8 @@ class PickLiftEnv(gym.Env):
 
         reward = -w.step_penalty - w.distance_weight * float(np.linalg.norm(ee - obj))
         if grasped:
-            reward += w.grasp_bonus + w.lift_weight * float(np.clip(lift, 0.0, self.cfg.rl.success_lift))
-        success = grasped and lift >= self.cfg.rl.success_lift
+            reward += w.grasp_bonus + w.lift_weight * float(np.clip(lift, 0.0, self.cfg.task.success_lift))
+        success = grasped and lift >= self.cfg.task.success_lift
         if success:
             reward += w.success_bonus
         return reward, success
