@@ -37,7 +37,7 @@
 
 ## Contents
 
-[Results](#results) · [How it works](#how-it-works) · [Engineering challenges](#engineering-challenges) · [Skills demonstrated](#skills-demonstrated) · [Key design decisions](#key-design-decisions) · [Quickstart](#quickstart) · [Testing and CI](#testing-and-ci) · [Project structure](#project-structure) · [Limitations and roadmap](#limitations-and-roadmap) · [Resources](#resources)
+[Results](#results) · [How it works](#how-it-works) · [Engineering challenges](#engineering-challenges) · [Skills demonstrated](#skills-demonstrated) · [Key design decisions](#key-design-decisions) · [Quickstart](#quickstart) · [Testing and CI](#testing-and-ci) · [Project structure](#project-structure) · [Limitations and roadmap](#limitations-and-roadmap) · [Topics covered](#topics-covered-in-this-project) · [Resources](#resources)
 
 ## Results
 
@@ -263,6 +263,16 @@ vision-rl-pickplace/
 4. Visual RL from pixels (an image encoder with augmentation, e.g. DrQ) to learn perception end to end.
 5. Extend pick-and-lift to full pick-and-place (carry the cube to a goal position), with goal-conditioned policies and Hindsight Experience Replay.
 
+## Topics covered in this project
+
+This project applies topics explained in [My AI Engineering Journey](../../README.md). Each topic page has an **"In our project"** section with the details.
+
+| # | Topic | Used | How it is used here |
+|---|---|---|---|
+| 11 | [VLA](../../docs/11-vla.md#vision-rl-pick-and-lift) | Partly | Vision and action are built: camera → learned policy → arm. There is no language part: the task is fixed in code, not given as an instruction |
+| 13 | [ROS](../../docs/13-ros.md#vision-rl-pick-and-lift) | Not yet | Runs as one Python program in simulation; each part maps to a ROS 2 node, the planned step toward a real robot |
+| 21 | [Reinforcement Learning](../../docs/21-reinforcement-learning.md#vision-rl-pick-and-lift) | Yes | The core of the project: a SAC policy learns to reach, grasp and lift the cube by trial and error, guided by rewards and penalties |
+
 ## Built with
 
 [PyBullet](https://pybullet.org) physics and its Franka Panda model · [OpenCV](https://opencv.org) · [Gymnasium](https://gymnasium.farama.org) · [Stable-Baselines3](https://stable-baselines3.readthedocs.io) with [PyTorch](https://pytorch.org) · [matplotlib](https://matplotlib.org)
@@ -275,7 +285,7 @@ vision-rl-pickplace/
 | [Training curve data](assets/training_curve.csv) | The validation results behind the training chart |
 | [Configuration](config/default.yaml) | Every setting: camera, workspace, success rule, rewards and training |
 | [CI workflow](../../.github/workflows/vision-rl-pickplace.yml) | Tests and policy regression gates, run on every change |
-| [VLA](../../docs/11-vla.md) · [ROS](../../docs/13-ros.md) · [Reinforcement Learning](../../docs/21-reinforcement-learning.md) · [Image](../../docs/04-image.md) · [Image Resolution](../../docs/05-image-resolution.md) | The concepts behind this project, explained in this repository |
+| [VLA](../../docs/11-vla.md) · [ROS](../../docs/13-ros.md) · [Reinforcement Learning](../../docs/21-reinforcement-learning.md) · [Image](../../docs/04-image.md) · [Image Resolution](../../docs/05-image-resolution.md) | Related concepts, explained in this repository |
 
 ## Author and contact
 
