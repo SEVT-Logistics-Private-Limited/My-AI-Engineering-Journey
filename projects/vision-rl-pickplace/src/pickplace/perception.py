@@ -7,6 +7,8 @@ Pipeline
     4. Centroid pixel (u, v) + median depth over the blob -> 3D point in the camera frame
     5. Camera frame -> world frame via the camera extrinsics
     6. Yaw from the blob's minimum-area rectangle, measured in the world frame
+    7. ``ObjectStateEstimator`` fuses detections with gripper proprioception so
+       the estimate survives occlusion by the arm and moves with a grasped object
 
 Only the camera-agnostic ``(rgb, depth, intrinsics, T_world_cam)`` is used, so
 the module is unchanged on a real RGB-D sensor.
@@ -108,24 +110,87 @@ class ColorObjectDetector:
         return wrap_to_quarter_turn(float(np.arctan2(b[1] - a[1], b[0] - a[0])))
 
 
-class ObjectTracker:
-    """Minimal state estimator: hold the last confident detection.
+class ObjectStateEstimator:
+    """Estimate the object's centre by fusing camera detections with gripper proprioception.
 
-    An overhead camera loses the object when the gripper covers it, so the
-    controller keeps acting on the last good estimate instead of on noise.
+    A lone overhead camera fails in two ways once the arm is in view. Both were
+    measured: fed raw detections, the trained policy fell from 100% to 21% success.
+
+    * Partial occlusion. The gripper hides part of the cube, and the visible
+      sliver gives a biased position. A detection is trusted only if its blob is
+      at least ``min_area_ratio`` of the largest (unoccluded) blob seen so far.
+    * Grasp. A held object is hidden by the hand and moves with it. Once the
+      fingers have settled on the object (closed, width in the hold band and
+      steady for two consecutive frames), the object is treated as rigidly
+      attached to the end-effector and its estimate follows forward kinematics.
+      A grasp that is still slipping or closing never looks settled. On release
+      the object is assumed to come to rest on the table.
+
+    Everything used here (camera, joint encoders, gripper width) exists on a
+    real robot; no simulator state is read.
     """
 
-    def __init__(self, min_area_px: int):
+    # Gripper width band, as a fraction of the object size, that means "holding it":
+    # from a face-to-face grasp (1.0, with margin) to a hold across the face
+    # diagonal (sqrt(2)). Narrower means fingers on an edge or corner, which is not stable.
+    HOLD_WIDTH_RANGE = (0.75, 1.5)
+    # Fingers that move less than this between frames count as settled on the object.
+    WIDTH_SETTLE_TOL = 0.002
+
+    def __init__(self, object_size: float, min_area_px: int, min_area_ratio: float):
+        if not 0.0 < min_area_ratio <= 1.0:
+            raise ValueError("min_area_ratio must be in (0, 1]")
+        self.object_size = object_size
         self.min_area_px = min_area_px
-        self.last: Detection | None = None
-        self.frames_since_update = 0
+        self.min_area_ratio = min_area_ratio
+        self.reset()
 
     def reset(self) -> None:
-        self.last, self.frames_since_update = None, 0
+        self.position: np.ndarray | None = None   # object centre, world frame
+        self.reference_area = 0
+        self.attached = False
+        self.frames_since_detection = 0
+        self._offset = np.zeros(3)
+        self._contact_offset: np.ndarray | None = None
+        self._prev_in_band = False
+        self._prev_width = 0.0
 
-    def update(self, detection: Detection | None) -> Detection | None:
-        if detection is not None and detection.area_px >= self.min_area_px:
-            self.last, self.frames_since_update = detection, 0
+    def update(self, detection: Detection | None, ee_position: np.ndarray,
+               gripper_width: float, gripper_closed: bool) -> np.ndarray | None:
+        """Fold in one camera frame and the current gripper state; return the estimate."""
+        lo, hi = (r * self.object_size for r in self.HOLD_WIDTH_RANGE)
+        in_band = gripper_closed and lo <= gripper_width <= hi
+        if in_band and not self._prev_in_band:
+            # First contact: record where the object sits relative to the hand,
+            # before it starts moving with it.
+            near = self.position is not None and np.linalg.norm(ee_position - self.position) < self.object_size
+            self._contact_offset = self.position - ee_position if near else None
+        settled = (in_band and self._prev_in_band
+                   and abs(gripper_width - self._prev_width) < self.WIDTH_SETTLE_TOL)
+        self._prev_in_band, self._prev_width = in_band, gripper_width
+
+        if self.attached and not in_band:
+            self.attached = False
+            self.position = self.position.copy()
+            self.position[2] = self.object_size / 2      # released: comes to rest on the table
+        elif not self.attached and settled and self._contact_offset is not None:
+            self.attached = True
+            self._offset = self._contact_offset
+
+        if self.attached:
+            self.position = ee_position + self._offset
+            return self.position
+
+        if self._is_confident(detection):
+            self.position = detection.position - np.array([0.0, 0.0, self.object_size / 2])
+            self.frames_since_detection = 0
         else:
-            self.frames_since_update += 1
-        return self.last
+            self.frames_since_detection += 1
+        return self.position
+
+    def _is_confident(self, detection: Detection | None) -> bool:
+        if detection is None or detection.area_px < self.min_area_px:
+            return False
+        # The largest blob seen is the best available measure of the unoccluded area.
+        self.reference_area = max(self.reference_area, detection.area_px)
+        return detection.area_px >= self.min_area_ratio * self.reference_area

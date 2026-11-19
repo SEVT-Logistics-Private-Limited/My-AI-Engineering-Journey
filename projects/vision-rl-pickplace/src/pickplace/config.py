@@ -67,6 +67,7 @@ class PerceptionConfig:
     hsv_ranges: list[list[list[int]]]
     min_area_px: int
     top_face_tolerance: float
+    min_area_ratio: float
     morph_kernel: int
 
 
@@ -170,6 +171,7 @@ def _validate(cfg: Config) -> None:
     )
     check(0 < cfg.camera.near < cfg.camera.far, "camera: need 0 < near < far")
     check(0 < cfg.camera.fov_deg < 180, "camera.fov_deg must be in (0, 180)")
+    check(0 < cfg.perception.min_area_ratio <= 1, "perception.min_area_ratio must be in (0, 1]")
     check(cfg.rl.obs_source in ("ground_truth", "perception"), "rl.obs_source invalid")
     check(cfg.rl.algorithm in ("SAC", "PPO"), "rl.algorithm must be SAC or PPO")
     check(cfg.rl.action_scale > 0, "rl.action_scale must be positive")

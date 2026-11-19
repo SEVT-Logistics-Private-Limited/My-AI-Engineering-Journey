@@ -10,6 +10,7 @@
     python scripts/evaluate.py --controller baseline --episodes 3 --video assets/baseline.gif
 
 Both controllers see the same seeded object placements, so their numbers are comparable.
+Default seeds (30000+) are the held-out test set used for the README results.
 """
 
 from __future__ import annotations
@@ -90,7 +91,7 @@ def evaluate_baseline(cfg, episodes: int, seed: int, video: str | None) -> list[
         for ep in range(episodes):
             # Match the RL env's placement distribution for a fair comparison.
             rng = np.random.default_rng(seed + ep)
-            scene.reset_robot()
+            scene.reset()
             scene.randomize_object(rng)
             scene.step(20)
             result = pipeline.run()
@@ -108,7 +109,9 @@ def main() -> None:
     parser.add_argument("--obs-source", choices=("ground_truth", "perception"), default="ground_truth")
     parser.add_argument("--config", default=None)
     parser.add_argument("--episodes", type=int, default=20)
-    parser.add_argument("--seed", type=int, default=10_000, help="held-out seeds, disjoint from training")
+    # Seeds 30000+ are the test set: never used for training, checkpoint selection
+    # or debugging (10000+ and 20000+ served as development sets).
+    parser.add_argument("--seed", type=int, default=30_000, help="first evaluation seed")
     parser.add_argument("--video", default=None, help="output .gif or .mp4")
     parser.add_argument("--min-success", type=float, default=None,
                         help="exit non-zero if the success rate (0-1) is below this; used as a CI regression gate")

@@ -72,3 +72,26 @@ def test_registered_with_gymnasium():
     obs, _ = e.reset(seed=0)
     assert obs.shape == (OBS_DIM,)
     e.close()
+
+
+def _rollout(env, seed):
+    obs, _ = env.reset(seed=seed)
+    traj = [obs]
+    for _ in range(30):
+        obs, *_ = env.step(scripted_expert(obs))
+        traj.append(obs)
+    return np.array(traj)
+
+
+def test_episode_depends_only_on_its_seed(cfg):
+    """Same seed -> same trajectory, whatever ran before (PyBullet caches contacts across resets)."""
+    fresh = PickLiftEnv(cfg)
+    used = PickLiftEnv(cfg)
+    try:
+        expected = _rollout(fresh, seed=5)
+        for s in range(1, 5):
+            _rollout(used, seed=s)
+        np.testing.assert_allclose(_rollout(used, seed=5), expected, atol=1e-6)
+    finally:
+        fresh.close()
+        used.close()

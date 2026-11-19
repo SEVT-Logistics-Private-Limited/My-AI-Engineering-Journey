@@ -25,7 +25,7 @@ more (discounted) than the one-time success bonus.
 
 ``obs_source`` chooses where object_xyz comes from:
     ground_truth  simulator state (fast; used for training)
-    perception    camera + detector + tracker (slow; tests robustness to estimation error)
+    perception    camera + detector + state estimator (slow; tests robustness to estimation error)
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ from gymnasium import spaces
 from .camera import RGBDCamera, render_presentation
 from .config import Config, load_config
 from .kinematics import PandaController
-from .perception import ColorObjectDetector, ObjectTracker
+from .perception import ColorObjectDetector, ObjectStateEstimator
 from .sim import Scene
 
 OBS_DIM = 10
@@ -63,7 +63,9 @@ class PickLiftEnv(gym.Env):
         self.controller = PandaController(self.scene)
         self.camera = RGBDCamera(self.cfg.camera, self.scene.client)
         self.detector = ColorObjectDetector(self.cfg.perception)
-        self.tracker = ObjectTracker(self.cfg.perception.min_area_px)
+        self.estimator = ObjectStateEstimator(
+            self.cfg.object.size, self.cfg.perception.min_area_px, self.cfg.perception.min_area_ratio,
+        )
 
         ws = self.cfg.workspace
         self._ee_low = np.array(ws.ee_low)
@@ -76,13 +78,16 @@ class PickLiftEnv(gym.Env):
         self._target = np.zeros(3)
         self._object_z0 = 0.0
         self._steps = 0
-        self._object_estimate = np.zeros(3)
+        self._gripper_closed = False
+        # Fallback if the object is never seen: centre of the spawn region, on the table.
+        self._object_prior = np.array([np.mean(ws.object_x), np.mean(ws.object_y), self.cfg.object.size / 2])
+        self._object_estimate = self._object_prior.copy()
 
     # ------------------------------------------------------------- gym API
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
         super().reset(seed=seed)
         rl = self.cfg.rl
-        self.scene.reset_robot()
+        self.scene.reset()
         self.scene.randomize_object(self.np_random, yaw_range=rl.object_yaw_range)
         self.scene.step(10)  # let the cube settle on the floor
         self._object_z0 = float(self.scene.object_state().position[2])
@@ -95,7 +100,9 @@ class PickLiftEnv(gym.Env):
             self.np_random.uniform(0.15, 0.25),
         ])
         # Perception needs a clear view before the arm moves into the frame.
-        self.tracker.reset()
+        self.estimator.reset()
+        self._object_estimate = self._object_prior.copy()
+        self._gripper_closed = False
         if self.obs_source == "perception":
             self._update_estimate()
         self.controller.set_gripper(closed=False)
@@ -113,7 +120,8 @@ class PickLiftEnv(gym.Env):
         # Integrate on the commanded target, not the measured pose, so small
         # actions are not swallowed by tracking error.
         self._target = np.clip(self._target + action[:3] * rl.action_scale, self._ee_low, self._ee_high)
-        self.controller.set_gripper(closed=bool(action[3] > 0))
+        self._gripper_closed = bool(action[3] > 0)
+        self.controller.set_gripper(closed=self._gripper_closed)
         self.controller.command_pose(self._target)
         self.scene.step(self.cfg.sim.control_substeps)
         self._steps += 1
@@ -139,10 +147,11 @@ class PickLiftEnv(gym.Env):
     def _update_estimate(self) -> None:
         frame = self.camera.capture()
         det = self.detector.detect(frame.rgb, frame.depth, self.camera.intrinsics, self.camera.T_world_cam)
-        est = self.tracker.update(det)
+        est = self.estimator.update(
+            det, self.controller.ee_position(), self.controller.gripper_width(), self._gripper_closed,
+        )
         if est is not None:
-            # Detector reports the top face; the policy was trained on the centre.
-            self._object_estimate = est.position - np.array([0, 0, self.cfg.object.size / 2])
+            self._object_estimate = est.copy()
 
     def _object_position(self) -> np.ndarray:
         if self.obs_source == "ground_truth":
@@ -179,6 +188,9 @@ class PickLiftEnv(gym.Env):
             "lift": float(obj[2] - self._object_z0),
             "grasped": self.scene.is_grasped(),
             "object_position": obj.copy(),
+            "estimate_error": (
+                float(np.linalg.norm(self._object_estimate - obj)) if self.obs_source == "perception" else 0.0
+            ),
         }
 
 

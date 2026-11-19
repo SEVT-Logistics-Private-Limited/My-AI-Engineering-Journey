@@ -46,6 +46,7 @@ perception:
     - [[170, 120, 70], [179, 255, 255]]
   min_area_px: 30
   top_face_tolerance: 0.01      # keep pixels within this depth of the nearest surface
+  min_area_ratio: 0.8           # state estimator trusts a blob only if >= 80% of the unoccluded area
   morph_kernel: 3
 
 grasp:
@@ -59,7 +60,7 @@ grasp:
 
 rl:
   algorithm: SAC
-  total_timesteps: 150000
+  total_timesteps: 60000         # validation success reaches 100% by ~35k steps
   max_episode_steps: 100
   action_scale: 0.03            # max end-effector displacement per step
   obs_source: ground_truth      # ground_truth | perception

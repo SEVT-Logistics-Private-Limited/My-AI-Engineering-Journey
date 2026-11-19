@@ -29,7 +29,7 @@ def test_baseline_picks_random_objects(scene):
     rng = np.random.default_rng(7)
     outcomes = []
     for _ in range(5):
-        scene.reset_robot()
+        scene.reset()
         scene.randomize_object(rng)
         scene.step(20)
         outcomes.append(pipe.run().outcome)

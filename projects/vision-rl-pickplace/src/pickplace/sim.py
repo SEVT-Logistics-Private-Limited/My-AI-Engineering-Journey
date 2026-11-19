@@ -30,26 +30,48 @@ class ObjectState:
 class Scene:
     def __init__(self, cfg: Config, gui: bool = False):
         self.cfg = cfg
+        self.gui = gui
         self.client = p.connect(p.GUI if gui else p.DIRECT)
         if self.client < 0:
             raise RuntimeError("failed to connect to the PyBullet physics server")
         p.setAdditionalSearchPath(pybullet_data.getDataPath(), physicsClientId=self.client)
-        p.setGravity(0, 0, cfg.sim.gravity, physicsClientId=self.client)
-        p.setTimeStep(cfg.sim.time_step, physicsClientId=self.client)
         if gui:
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self.client)
             p.resetDebugVisualizerCamera(1.1, 50, -35, [0.5, 0, 0.1], physicsClientId=self.client)
-
-        self.plane_id = p.loadURDF("plane.urdf", physicsClientId=self.client)
-        self.robot_id = p.loadURDF(
-            cfg.robot.urdf, cfg.robot.base_position, useFixedBase=True,
-            flags=p.URDF_USE_SELF_COLLISION, physicsClientId=self.client,
-        )
-        self.object_id = self._create_cube()
-        self._configure_contacts()
-        self.reset_robot()
+        self.plane_id = self.robot_id = self.object_id = -1
+        self.reset()
 
     # ------------------------------------------------------------------ setup
+    def _build_world(self) -> None:
+        """Rebuild the world from scratch.
+
+        Bullet keeps solver warm-start and contact caches between steps, and
+        neither moving bodies directly nor ``saveState``/``restoreState`` clears
+        them. Without a rebuild, an episode's outcome depended on how the
+        previous episode ended (measured trajectory divergence of up to 6 cm).
+        A rebuild costs about 60 ms and makes every episode a function of its
+        seed alone.
+        """
+        if self.gui:
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0, physicsClientId=self.client)
+        p.resetSimulation(physicsClientId=self.client)
+        p.setGravity(0, 0, self.cfg.sim.gravity, physicsClientId=self.client)
+        p.setTimeStep(self.cfg.sim.time_step, physicsClientId=self.client)
+        ids = (
+            p.loadURDF("plane.urdf", physicsClientId=self.client),
+            p.loadURDF(
+                self.cfg.robot.urdf, self.cfg.robot.base_position, useFixedBase=True,
+                flags=p.URDF_USE_SELF_COLLISION, physicsClientId=self.client,
+            ),
+            self._create_cube(),
+        )
+        if self.robot_id != -1 and ids != (self.plane_id, self.robot_id, self.object_id):
+            # Controllers cache body ids, so they must not change between rebuilds.
+            raise RuntimeError(f"body ids changed across rebuild: {ids}")
+        self.plane_id, self.robot_id, self.object_id = ids
+        self._configure_contacts()
+        if self.gui:
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1, physicsClientId=self.client)
     def _create_cube(self) -> int:
         half = self.cfg.object.size / 2
         col = p.createCollisionShape(p.GEOM_BOX, halfExtents=[half] * 3, physicsClientId=self.client)
@@ -75,7 +97,13 @@ class Scene:
             )
 
     # ------------------------------------------------------------------ reset
+    def reset(self) -> None:
+        """Fresh physics world with the robot at its home pose. Call once per episode."""
+        self._build_world()
+        self.reset_robot()
+
     def reset_robot(self) -> None:
+        """Move the robot to its home pose without touching the rest of the world."""
         for j, q in zip(ARM_JOINTS, self.cfg.robot.home_joints):
             p.resetJointState(self.robot_id, j, q, physicsClientId=self.client)
         half_open = self.cfg.robot.gripper_open_width / 2

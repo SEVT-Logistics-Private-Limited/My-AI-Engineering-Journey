@@ -35,7 +35,7 @@ def main() -> None:
         pipeline = PickPipeline(scene, camera, on_step=on_step)
         start = time.time()
         for ep in range(args.episodes):
-            scene.reset_robot()
+            scene.reset()
             scene.randomize_object(rng)
             scene.step(20)
             result = pipeline.run()
