@@ -26,7 +26,7 @@ Each topic is a short, consistent page: a clear explanation, a flow diagram, and
 | **Applied in our project** | 14 of the 34 topics |
 | **Page format** | Introduction · What it is · Why it is needed · How it works · Flow diagram · Real-world use cases · In our project |
 | **Featured project** | [Telugu Voice AI Assistant](projects/telugu-voice-assistant/README.md), deployed on Azure Container Apps |
-| **Author** | Rishi Sasanala |
+| **Author** | Rishi Sasanala · [rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) |
 
 ## Learning path
 
