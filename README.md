@@ -174,15 +174,37 @@ User hears the answer
 
 ## Robotics project
 
-**Vision-RL Pick-and-Place.** A simulated Franka Panda finds a cube with an RGB-D camera and picks it up, using either a classical Vision + IK pipeline or a reinforcement-learning policy (SAC) trained on CPU. It applies [VLA](docs/11-vla.md), [ROS](docs/13-ros.md)-style perception → planning → control, and [Reinforcement Learning](docs/21-reinforcement-learning.md).
+**Vision-RL Pick-and-Place.** A computer vision and robot learning project: a simulated Franka Panda locates a cube with an RGB-D camera, tracks it through occlusion with a camera–proprioception state estimator, and picks it up with a reinforcement-learning policy (SAC) trained on a CPU.
+
+<img src="projects/vision-rl-pickplace/assets/rl_policy.gif" width="520" alt="Trained SAC policy, acting on camera estimates, picking up a cube with a Franka Panda arm">
+
+| Result | Value |
+|---|---|
+| **Pick success from camera input** | 99% on 100 held-out test episodes |
+| **3D localisation error** | 1.8 mm mean, from a single RGB-D frame |
+| **Generalisation** | 100% on cube rotations never seen in training |
+| **Training** | 18 minutes on a 4-core CPU, no GPU |
+| **Engineering** | 46 tests; CI gates on the trained policy's success rate |
 
 ```text
-RGB-D camera → OpenCV perception → 3D localisation → IK planner / RL policy → PyBullet Panda
+RGB-D camera (overhead, simulated)
+        ↓
+Computer vision: OpenCV segmentation → 3D localisation
+        ↓
+State estimation: camera + joint encoders + gripper width
+        ↓
+Robot learning: SAC policy (or a classical IK baseline)
+        ↓
+Control: inverse kinematics → Franka Panda in PyBullet
 ```
 
 | Resource | Link |
 |---|---|
-| **Project overview, results and quickstart** | [Vision-RL Pick-and-Place](projects/vision-rl-pickplace/README.md) |
+| **Project overview** | [Vision-RL Pick-and-Place](projects/vision-rl-pickplace/README.md) |
+| **Results and training curve** | [Results](projects/vision-rl-pickplace/README.md#results) |
+| **Problems solved during development** | [Engineering challenges](projects/vision-rl-pickplace/README.md#engineering-challenges) |
+| **Concepts applied** | [VLA](docs/11-vla.md) · [ROS](docs/13-ros.md) · [Reinforcement Learning](docs/21-reinforcement-learning.md) |
+| **Source code** | [projects/vision-rl-pickplace](projects/vision-rl-pickplace) |
 
 ## Repository structure
 
