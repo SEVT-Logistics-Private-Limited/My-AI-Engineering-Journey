@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-2563eb)
 ![Simulator](https://img.shields.io/badge/sim-PyBullet-16a34a)
 ![RL](https://img.shields.io/badge/RL-SAC%20(Stable--Baselines3)-7c3aed)
-![Tests](https://img.shields.io/badge/tests-27%20passing-16a34a)
+![Tests](https://img.shields.io/badge/tests-28%20passing-16a34a)
 
 <img src="assets/rl_policy.gif" width="420" alt="Trained SAC policy picking up the cube"> <img src="assets/baseline.gif" width="420" alt="Vision + IK baseline picking up the cube">
 
@@ -23,15 +23,17 @@ Evaluated on **held-out seeds** (10 000+, disjoint from training), random cube p
 
 | Controller | Object position from | Success | Episodes |
 |---|---|---|---|
-| Vision + IK baseline | Camera (perception) | __BASELINE__ | 100 |
+| Vision + IK baseline | Camera (perception) | **100%** (100/100) | 100 |
 | SAC policy | Simulator ground truth (as trained) | __RL_GT__ | 100 |
 | SAC policy | Camera (perception + tracker) | __RL_PERC__ | 100 |
 
 | Perception metric | Value |
 |---|---|
-| 3D localisation error (top face) | __PERC_ERR__ |
-| Yaw error | < 1° typical, < 4° worst case |
-| Detection rate (unoccluded) | 100% |
+| 3D localisation error (top face) | 1.8 mm mean · 2.8 mm max |
+| Yaw error | 0.5° mean · 3.8° max |
+| Detection rate (unoccluded) | 100 / 100 |
+
+Perception metrics are measured over 100 random placements against simulator ground truth.
 
 Training: SAC, __STEPS__ environment steps, __TRAIN_TIME__ on a 4-core CPU, no GPU.
 
@@ -57,7 +59,7 @@ Both controllers share the same perception and the same low-level Cartesian cont
 | Decision | Why |
 |---|---|
 | **Perception consumes only `(rgb, depth, K, T_world_cam)`** | Same interface as a RealSense/ZED driver, so the module transfers to hardware unchanged. |
-| **Top-face depth gating** | Perspective makes the cube's side faces visible and biases the centroid. Keeping only pixels within 1 cm of the nearest surface cut the error from ~5 mm to ~1.5 mm. |
+| **Top-face depth gating** | Perspective makes the cube's side faces visible and biases the centroid. Keeping only pixels within 1 cm of the nearest surface cut the mean error from 3.3 mm to 1.8 mm (max 6.1 → 2.8 mm) over 100 placements. |
 | **Yaw measured in the world frame** | The min-area rectangle edge is deprojected to 3D before taking `atan2`, so no camera-mounting convention is hard-coded. |
 | **RL acts in Cartesian space (Δxyz + gripper)** | A 4-D action through IK is far more sample-efficient than 9-D joint control, which is what makes CPU-only training feasible. |
 | **Train on ground truth, evaluate on perception** | Rendering a camera frame costs ~50 ms vs ~1.5 ms per physics step. Evaluating the trained policy on perceived state measures the estimation gap explicitly instead of hiding it. |
@@ -83,7 +85,7 @@ python scripts/evaluate.py --controller rl           # Phase 3: trained policy (
 python scripts/evaluate.py --controller rl --obs-source perception
 python scripts/train_rl.py                           # retrain from scratch (~30 min on 4 CPU cores)
 tensorboard --logdir runs/
-pytest -q                                            # 27 tests, ~10 s
+pytest -q                                            # 28 tests, ~10 s
 ```
 
 Add `--gui` to `run_baseline.py` to watch in the PyBullet window, or `--video out.gif` to `evaluate.py` to record.
@@ -120,7 +122,7 @@ vision-rl-pickplace/
 │   ├── train_rl.py            Phase 3: SAC / PPO training
 │   └── evaluate.py            Success rates and video recording
 ├── models/sac_picklift.zip    Trained policy
-├── tests/                     27 tests: config, perception, IK, baseline, env
+├── tests/                     28 tests: config, perception, IK, baseline, env
 └── assets/                    GIFs and debug images
 ```
 

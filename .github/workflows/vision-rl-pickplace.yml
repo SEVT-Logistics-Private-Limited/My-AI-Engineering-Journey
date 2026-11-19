@@ -1,23 +1,32 @@
 name: vision-rl-pickplace
 
 on:
+  # PR branches are covered by pull_request; push only on main avoids
+  # running every job twice for each push to an open PR.
   push:
+    branches: [main]
     paths: ["projects/vision-rl-pickplace/**", ".github/workflows/vision-rl-pickplace.yml"]
   pull_request:
     paths: ["projects/vision-rl-pickplace/**", ".github/workflows/vision-rl-pickplace.yml"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: projects/vision-rl-pickplace
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
