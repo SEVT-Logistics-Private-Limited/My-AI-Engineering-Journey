@@ -2,7 +2,7 @@
 
 # Vision-RL Pick-and-Lift
 
-**Computer vision and robot learning for robotic grasping.** A simulated Franka Panda locates a cube with an RGB-D camera, tracks it through occlusion with a camera–proprioception state estimator, and picks it up with a reinforcement-learning policy trained on a CPU.
+**Computer vision and robot learning for robotic grasping.** A simulated Franka Panda robot arm finds a cube with a depth camera, keeps tracking it even when its own arm hides it, and picks it up with a control policy learned by reinforcement learning on a standard CPU.
 
 [![CI](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml/badge.svg?branch=main)](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml)
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12-2563eb)
@@ -15,34 +15,29 @@
 
 *Left: learned SAC policy acting on camera estimates. Right: classical Vision + IK baseline. Real time, 24 fps.*
 
-**99%** pick success from camera input · **1.8 mm** 3D localisation error · **18 min** training on a 4-core CPU · **46** tests in CI
+**99%** pick success from camera input · **1.8 mm** 3D localisation error · **18 min** training on a 4-core CPU · **47** tests in CI
 
 </div>
 
 ---
 
-## Highlights
+> [!NOTE]
+> **Status: research prototype.** Developed and evaluated in a physics simulator (PyBullet); not yet tested on a physical robot. The path to hardware is in the [roadmap](#limitations-and-roadmap).
 
-- **End-to-end perception-to-action system.** RGB-D camera → OpenCV segmentation → 3D localisation → state estimation → learned policy → inverse kinematics, built in modular, separately tested stages.
-- **Accurate 3D perception from a single RGB-D frame:** 1.8 mm mean error, 0.5° mean yaw error. A top-face depth gate that removes perspective bias cut the mean error from 3.3 mm.
-- **Closed a perception gap.** Fed raw camera detections, the trained policy succeeded only 21% of the time. A state estimator fusing vision with joint encoders and gripper width brings it to **99% on held-out test episodes**.
-- **Sample-efficient robot learning.** SAC reaches 100% validation success after 25,000 environment steps, on a CPU with no GPU. It also handles cube orientations never seen in training (100% at ±45°).
-- **Rigorous evaluation.** Separate training, validation, development and test seeds; test results measured once after development was frozen; every episode bit-for-bit reproducible from its seed.
-- **Production-style engineering.** 46 tests, CI on two Python versions with regression gates on the trained policy's success rate, and validated configuration.
+## Executive summary
 
-## Skills demonstrated
-
-| Area | In this project |
+| Area | Summary |
 |---|---|
-| **Computer vision** | RGB-D perception · HSV segmentation and contour analysis (OpenCV) · pinhole camera model with explicit intrinsics and extrinsics · depth-based 3D deprojection · perspective-bias correction · orientation estimation |
-| **State estimation** | Fusing vision with proprioception (forward kinematics, gripper width) · occlusion handling · grasp detection from finger geometry |
-| **Robot learning** | Gymnasium environment design · reward shaping and diagnosing reward hacking · SAC with Stable-Baselines3 · validation-based checkpoint selection · held-out and out-of-distribution evaluation |
-| **Robotics** | Franka Panda in PyBullet · damped-least-squares inverse kinematics with null-space control · Cartesian control · top-down grasp planning |
-| **ML engineering** | Seed-deterministic simulation · experiment protocol with data splits · pytest · GitHub Actions with model regression gates · typed, validated YAML config |
+| **Challenge** | To pick up an object, a robot must see it, locate it precisely and grasp it reliably, including when its own arm hides the object from the camera. |
+| **Solution** | A complete perception-to-action software stack, built and tested in simulation: computer vision locates the object from a depth camera, a state estimator keeps tracking it through occlusion, and a control policy trained by reinforcement learning picks it up. |
+| **Results** | 99% pick success from camera input on 100 held-out test episodes; 1.8 mm localisation error; 100% on object orientations never seen in training. |
+| **Efficiency** | Trained in 18 minutes on a standard 4-core CPU, with no GPU and no robot hardware. |
+| **Why it matters** | Picking is a core step in warehouse and logistics automation. This prototype demonstrates, without any robot hardware, the software such systems need: perception, tracking, learned control and rigorous testing. |
+| **Quality** | Every result is reproducible from its seed; 47 automated tests and continuous-integration gates on the trained policy guard against regressions. |
 
 ## Contents
 
-[Results](#results) · [How it works](#how-it-works) · [Engineering challenges](#engineering-challenges) · [Key design decisions](#key-design-decisions) · [Quickstart](#quickstart) · [Testing and CI](#testing-and-ci) · [Project structure](#project-structure) · [Limitations and roadmap](#limitations-and-roadmap)
+[Results](#results) · [How it works](#how-it-works) · [Engineering challenges](#engineering-challenges) · [Skills demonstrated](#skills-demonstrated) · [Key design decisions](#key-design-decisions) · [Quickstart](#quickstart) · [Testing and CI](#testing-and-ci) · [Project structure](#project-structure) · [Limitations and roadmap](#limitations-and-roadmap) · [Resources](#resources)
 
 ## Results
 
@@ -60,6 +55,8 @@ All numbers come from **100 held-out test episodes** (seeds 30000–30099), each
 | 3D localisation error, top face | 1.8 mm mean · 2.8 mm max |
 | Yaw error | 0.5° mean · 3.8° max |
 | Detection rate, unoccluded | 100% |
+
+Reproduce any row with `scripts/evaluate.py`, for example `python scripts/evaluate.py --controller rl --obs-source perception --episodes 100` for the camera-driven policy.
 
 **Training:** SAC, 60,000 environment steps, 18 minutes on a 4-core CPU. Validation success first reaches 100% at 25,000 steps; the deployed policy is the best validation checkpoint, at 40,000 steps.
 
@@ -141,7 +138,7 @@ Once the arm moves into view, the overhead camera alone is unreliable: the gripp
 
 ### 3. Robot learning: reinforcement learning
 
-| | |
+| Aspect | Detail |
 |---|---|
 | **Algorithm** | Soft Actor-Critic (Stable-Baselines3), MLP 256×256, γ = 0.95 |
 | **Observation (10)** | End-effector position · gripper width · object position · object − end-effector |
@@ -168,6 +165,16 @@ What broke during development, how each issue was diagnosed, and the measured ef
 | 5 | Wrist reached only ~55% of the commanded rotation | The IK null-space rest pose pinned the wrist joint, and convergence checked position only | Bias the rest pose by the target yaw; check orientation too | Yaw error < 3° |
 
 Complexity was added only where measurements justified it. One estimator rule never fired in 100 development episodes, so it was removed.
+
+## Skills demonstrated
+
+| Area | In this project |
+|---|---|
+| **Computer vision** | RGB-D perception · HSV segmentation and contour analysis (OpenCV) · pinhole camera model with explicit intrinsics and extrinsics · depth-based 3D deprojection · perspective-bias correction · orientation estimation |
+| **State estimation** | Fusing vision with proprioception (forward kinematics, gripper width) · occlusion handling · grasp detection from finger geometry |
+| **Robot learning** | Gymnasium environment design · reward shaping and diagnosing reward hacking · SAC with Stable-Baselines3 · validation-based checkpoint selection · held-out and out-of-distribution evaluation |
+| **Robotics** | Franka Panda in PyBullet · damped-least-squares inverse kinematics with null-space control · Cartesian control · top-down grasp planning |
+| **ML engineering** | Seed-deterministic simulation · experiment protocol with data splits · pytest · GitHub Actions with model regression gates · typed, validated YAML config |
 
 ## Key design decisions
 
@@ -200,14 +207,14 @@ python scripts/evaluate.py --controller rl --obs-source perception   # ... actin
 python scripts/train_rl.py                           # retrain from scratch (~18 min on 4 CPU cores)
 python scripts/plot_training.py --run runs/<name>    # training curve → assets/
 python scripts/plot_perception.py                    # perception figure → assets/
-pytest -q                                            # 46 tests, ~10 s
+pytest -q                                            # 47 tests, ~10 s
 ```
 
 Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer; `--video out.gif` or `--video out.mp4` on `evaluate.py` records the episodes; `--min-success 0.9` makes `evaluate.py` fail below a success rate.
 
 ## Testing and CI
 
-- **46 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipeline, the Gymnasium environment, determinism, video and figures.
+- **47 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipeline, the Gymnasium environment, determinism, video and figures.
 - **GitHub Actions** on Python 3.10 and 3.12, for every change to this project: the full test suite, a baseline smoke run, and **regression gates on the committed policy** (at least 90% success with ground truth and 80% with the camera), so a change that breaks the trained model fails CI.
 
 ## Project structure
@@ -234,7 +241,7 @@ vision-rl-pickplace/
 │   ├── plot_perception.py     Perception figure
 │   └── viz_theme.py           Shared figure colours
 ├── models/sac_picklift.zip    Trained policy (best validation checkpoint)
-├── tests/                     46 tests
+├── tests/                     47 tests
 └── assets/                    Demo GIFs, perception figure, training curve
 ```
 
@@ -256,9 +263,19 @@ vision-rl-pickplace/
 4. Visual RL from pixels (an image encoder with augmentation, e.g. DrQ) to learn perception end to end.
 5. Extend pick-and-lift to full pick-and-place (carry the cube to a goal position), with goal-conditioned policies and Hindsight Experience Replay.
 
-## Background
+## Built with
 
-Concepts behind this project are explained in this repository: [VLA](../../docs/11-vla.md) · [ROS](../../docs/13-ros.md) · [Reinforcement Learning](../../docs/21-reinforcement-learning.md) · [Image](../../docs/04-image.md) · [Image Resolution](../../docs/05-image-resolution.md)
+[PyBullet](https://pybullet.org) physics and its Franka Panda model · [OpenCV](https://opencv.org) · [Gymnasium](https://gymnasium.farama.org) · [Stable-Baselines3](https://stable-baselines3.readthedocs.io) with [PyTorch](https://pytorch.org) · [matplotlib](https://matplotlib.org)
+
+## Resources
+
+| Resource | Purpose |
+|---|---|
+| [Trained policy](models/sac_picklift.zip) | The deployed SAC checkpoint (best validation score, at 40,000 steps) |
+| [Training curve data](assets/training_curve.csv) | The validation results behind the training chart |
+| [Configuration](config/default.yaml) | Every setting: camera, workspace, success rule, rewards and training |
+| [CI workflow](../../.github/workflows/vision-rl-pickplace.yml) | Tests and policy regression gates, run on every change |
+| [VLA](../../docs/11-vla.md) · [ROS](../../docs/13-ros.md) · [Reinforcement Learning](../../docs/21-reinforcement-learning.md) · [Image](../../docs/04-image.md) · [Image Resolution](../../docs/05-image-resolution.md) | The concepts behind this project, explained in this repository |
 
 ## Author and contact
 
