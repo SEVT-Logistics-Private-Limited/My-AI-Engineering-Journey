@@ -260,6 +260,6 @@ vision-rl-pickplace/
 
 Concepts behind this project are explained in this repository: [VLA](../../docs/11-vla.md) · [ROS](../../docs/13-ros.md) · [Reinforcement Learning](../../docs/21-reinforcement-learning.md) · [Image](../../docs/04-image.md) · [Image Resolution](../../docs/05-image-resolution.md)
 
-## Author
+## Author and contact
 
-**Rishi Sasanala** · [GitHub](https://github.com/rishisasanala) · part of [My AI Engineering Journey](../../README.md)
+**Rishi Sasanala** · [rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) · [GitHub](https://github.com/rishisasanala) · part of [My AI Engineering Journey](../../README.md)
