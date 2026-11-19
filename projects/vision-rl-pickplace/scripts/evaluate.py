@@ -110,7 +110,11 @@ def main() -> None:
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--seed", type=int, default=10_000, help="held-out seeds, disjoint from training")
     parser.add_argument("--video", default=None, help="output .gif or .mp4")
+    parser.add_argument("--min-success", type=float, default=None,
+                        help="exit non-zero if the success rate (0-1) is below this; used as a CI regression gate")
     args = parser.parse_args()
+    if args.min_success is not None and not 0.0 <= args.min_success <= 1.0:
+        parser.error("--min-success must be between 0 and 1")
 
     cfg = load_config(args.config)
     start = time.time()
@@ -122,8 +126,10 @@ def main() -> None:
     else:
         results = evaluate_baseline(cfg, args.episodes, args.seed, args.video)
         label = "baseline[perception]"
-    rate = 100 * np.mean(results)
-    print(f"\n{label}: success {sum(results)}/{len(results)} ({rate:.1f}%) in {time.time() - start:.1f} s")
+    rate = float(np.mean(results))
+    print(f"\n{label}: success {sum(results)}/{len(results)} ({100 * rate:.1f}%) in {time.time() - start:.1f} s")
+    if args.min_success is not None and rate < args.min_success:
+        raise SystemExit(f"FAIL: success rate {rate:.2f} is below the required {args.min_success:.2f}")
 
 
 if __name__ == "__main__":
