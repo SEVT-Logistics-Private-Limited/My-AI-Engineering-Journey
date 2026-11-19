@@ -1,0 +1,47 @@
+name: vision-rl-pickplace
+
+on:
+  # PR branches are covered by pull_request; push only on main avoids
+  # running every job twice for each push to an open PR.
+  push:
+    branches: [main]
+    paths: ["projects/vision-rl-pickplace/**", ".github/workflows/vision-rl-pickplace.yml"]
+  pull_request:
+    paths: ["projects/vision-rl-pickplace/**", ".github/workflows/vision-rl-pickplace.yml"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: projects/vision-rl-pickplace
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install (CPU-only torch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Unit and integration tests
+        run: pytest -q
+      - name: Baseline smoke run
+        run: python scripts/run_baseline.py --episodes 5
+      # Regression gates: fail if the committed policy stops working, not just if
+      # it fails to load. Thresholds allow one failure, because PyBullet builds
+      # (prebuilt wheel vs source) can differ numerically.
+      - name: Trained policy (ground truth) regression gate
+        run: python scripts/evaluate.py --controller rl --episodes 10 --min-success 0.9
+      - name: Trained policy (camera + state estimator) regression gate
+        run: python scripts/evaluate.py --controller rl --obs-source perception --episodes 5 --min-success 0.8

@@ -10,7 +10,7 @@
 
 Yodha AI · SEVT Logistics Private Limited
 
-[Topics](#topics) · [Featured Project](#featured-project) · [Learning Path](#learning-path) · [Roadmap](ROADMAP.md)
+[Topics](#topics) · [Featured Project](#featured-project) · [Robotics Project](#robotics-project) · [Learning Path](#learning-path) · [Roadmap](ROADMAP.md)
 
 </div>
 
@@ -172,12 +172,24 @@ User hears the answer
 | **Live application** | [Open the assistant](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) |
 | **Source code** | [tiny-llm-jetson](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) |
 
+## Robotics project
+
+**Vision-RL Pick-and-Place.** A simulated Franka Panda finds a cube with an RGB-D camera and picks it up, using either a classical Vision + IK pipeline or a reinforcement-learning policy (SAC) trained on CPU. It applies [VLA](docs/11-vla.md), [ROS](docs/13-ros.md)-style perception → planning → control, and [Reinforcement Learning](docs/21-reinforcement-learning.md).
+
+```text
+RGB-D camera → OpenCV perception → 3D localisation → IK planner / RL policy → PyBullet Panda
+```
+
+| Resource | Link |
+|---|---|
+| **Project overview, results and quickstart** | [Vision-RL Pick-and-Place](projects/vision-rl-pickplace/README.md) |
+
 ## Repository structure
 
 ```text
 .
 ├── docs/         Topic pages, numbered in reading order
-├── projects/     Telugu Voice AI Assistant write-up and screenshots
+├── projects/     Telugu Voice AI Assistant write-up; Vision-RL Pick-and-Place code
 ├── assets/       Images used in the topic pages
 └── ROADMAP.md    Covered and planned topics
 ```

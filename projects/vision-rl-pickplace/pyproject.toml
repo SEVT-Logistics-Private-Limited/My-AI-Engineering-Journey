@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pickplace"
+version = "0.1.0"
+description = "Vision-guided pick-and-place with a Franka Panda in PyBullet: classical CV + IK baseline and an RL policy."
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pybullet>=3.2.6",
+    "opencv-python-headless>=4.8",
+    "gymnasium>=0.29",
+    "pyyaml>=6.0",
+    "imageio>=2.31",
+]
+
+[project.optional-dependencies]
+rl = ["stable-baselines3>=2.3", "tensorboard>=2.14"]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
