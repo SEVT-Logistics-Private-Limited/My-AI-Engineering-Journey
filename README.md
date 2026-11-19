@@ -145,68 +145,68 @@ Working with large language models in practice: how to ask, why they sometimes m
 
 ## Featured project
 
-**Telugu Voice AI Assistant.** A voice assistant that listens in Telugu, grounds its answers in vehicle manuals using Retrieval-Augmented Generation (RAG), and replies in spoken Telugu.
+### Yodha: Telugu Voice AI Assistant
 
-```text
-User speaks (Telugu)
-        ↓
-Speech to text
-        ↓
-FastAPI server receives the question (REST API on Azure)
-        ↓
-Translate the query (Telugu → English)
-        ↓
-RAG: retrieve the matching section from ChromaDB (vehicle manuals)
-        ↓
-LLM (Gemini) generates the answer using the manual section
-        ↓
-Text to speech (FastAPI: POST /tts)
-        ↓
-User hears the answer
+[![Service status](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ftelugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io%2F&query=%24.status&label=service&color=16a34a)](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant)
+[![API version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ftelugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io%2F&query=%24.version&label=API%20version&color=0078d4)](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/openapi.json)
+![Azure](https://img.shields.io/badge/deployed%20on-Azure%20Container%20Apps-0078d4)
+
+**Ask a vehicle question out loud in Telugu and hear the answer in Telugu, grounded in the vehicle manuals.**
+
+| Area | Summary |
+|---|---|
+| **Status** | Live in production on Azure, with sign-in and automated deployment from GitHub |
+| **Challenge** | Vehicle manuals are long, written in English and text-only, so answers are slow to find for Telugu speakers |
+| **Solution** | Yodha listens to a question in Telugu, finds the relevant section of the manual, has a large language model answer from it, and speaks the answer back in Telugu |
+| **Trust** | Answers are grounded in the manual: a relevance threshold, "don't make things up" rules, a Telugu-output check and a three-model fallback |
+| **In-house capability** | A small Telugu language model built from scratch, alongside the production assistant |
+
+```mermaid
+flowchart LR
+    A["Question spoken<br/>in Telugu"] --> B["Speech<br/>to text"] --> C["Find the manual section<br/>RAG, ChromaDB"] --> D["Gemini answers<br/>in Telugu"] --> E["Spoken<br/>answer"]
 ```
 
-| Resource | Link |
+| Resource | Purpose |
 |---|---|
-| **Project overview** | [Telugu Voice AI Assistant](projects/telugu-voice-assistant/README.md) |
-| **Topic-by-topic mapping** | [Topics covered in this project](projects/telugu-voice-assistant/README.md#topics-covered-in-this-project) |
-| **Live application** | [Open the assistant](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) |
-| **Source code** | [tiny-llm-jetson](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) |
+| [Project overview](projects/telugu-voice-assistant/README.md) | Executive summary, architecture, API and deployment |
+| [Live assistant](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) | Try Yodha (sign-in required) |
+| [Topics covered](projects/telugu-voice-assistant/README.md#topics-covered-in-this-project) | How the 14 applied topics map to the assistant |
+| [Source code](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) | Application, deployment and model-training code |
 
 ## Robotics project
 
-**Vision-RL Pick-and-Lift.** A computer vision and robot learning project: a simulated Franka Panda locates a cube with an RGB-D camera, tracks it through occlusion with a camera–proprioception state estimator, and picks it up with a reinforcement-learning policy (SAC) trained on a CPU.
+### Vision-RL Pick-and-Lift
 
-<img src="projects/vision-rl-pickplace/assets/rl_policy.gif" width="520" alt="Trained SAC policy, acting on camera estimates, picking up a cube with a Franka Panda arm">
+[![CI](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml/badge.svg?branch=main)](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml)
+![Status](https://img.shields.io/badge/status-research%20prototype-d97706)
+![Simulation](https://img.shields.io/badge/runs%20in-PyBullet%20simulation-16a34a)
 
-| Result | Value |
+**A robot arm that finds an object with a camera and learns, by trial and error, to pick it up.**
+
+<img src="projects/vision-rl-pickplace/assets/rl_policy.gif" width="520" alt="Simulated robot arm finding a red cube with its camera and picking it up">
+
+| Area | Summary |
 |---|---|
-| **Pick success from camera input** | 99% on 100 held-out test episodes |
-| **3D localisation error** | 1.8 mm mean, from a single RGB-D frame |
-| **Generalisation** | 100% on cube rotations never seen in training |
-| **Training** | 18 minutes on a 4-core CPU, no GPU |
-| **Engineering** | 47 tests; CI gates on the trained policy's success rate |
+| **Status** | Research prototype in simulation; not yet tested on a physical robot |
+| **Challenge** | A robot must see an object, locate it precisely and grasp it reliably, even when its own arm hides the object from the camera |
+| **Solution** | Computer vision locates the object, a state estimator keeps tracking it through occlusion, and a control policy learned by reinforcement learning picks it up |
+| **Results** | 99% pick success from camera input on 100 held-out tests · 1.8 mm localisation error · 100% on orientations never seen in training · trained in 18 minutes on a standard CPU |
+| **Why it matters** | Picking is a core step in warehouse and logistics automation; this prototype demonstrates the software stack such systems need, without robot hardware |
 
-```text
-RGB-D camera (overhead, simulated)
-        ↓
-Computer vision: OpenCV segmentation → 3D localisation
-        ↓
-State estimation: camera + joint encoders + gripper width
-        ↓
-Robot learning: SAC policy
-        ↓
-Control: inverse kinematics → Franka Panda in PyBullet
+```mermaid
+flowchart LR
+    A["Depth<br/>camera"] --> B["Computer vision<br/>locates the cube"] --> C["State estimator<br/>tracks it when hidden"] --> D["Learned policy<br/>picks the next move"] --> E["Robot arm<br/>lifts the cube"]
 ```
 
-A classical Vision + IK baseline (100% success) needs no state estimator: it takes one photo before the arm moves, then follows a fixed grasp sequence. Both are scored by the same rule: the cube is held and lifted at least 5 cm.
+For comparison, a hand-written version with no learning also scores 100%. Both are judged by the same rule: the cube is held and lifted at least 5 cm.
 
-| Resource | Link |
+| Resource | Purpose |
 |---|---|
-| **Project overview** | [Vision-RL Pick-and-Lift](projects/vision-rl-pickplace/README.md) |
-| **Results and training curve** | [Results](projects/vision-rl-pickplace/README.md#results) |
-| **Problems solved during development** | [Engineering challenges](projects/vision-rl-pickplace/README.md#engineering-challenges) |
-| **Concepts applied** | [VLA](docs/11-vla.md) · [ROS](docs/13-ros.md) · [Reinforcement Learning](docs/21-reinforcement-learning.md) |
-| **Source code** | [projects/vision-rl-pickplace](projects/vision-rl-pickplace) |
+| [Project overview](projects/vision-rl-pickplace/README.md) | Executive summary, results, how it works and quickstart |
+| [Results](projects/vision-rl-pickplace/README.md#results) | Test results and the training curve |
+| [Engineering challenges](projects/vision-rl-pickplace/README.md#engineering-challenges) | Problems found and solved during development |
+| [Concepts applied](docs/21-reinforcement-learning.md) | [VLA](docs/11-vla.md) · [ROS](docs/13-ros.md) · [Reinforcement Learning](docs/21-reinforcement-learning.md), explained in this repository |
+| [Source code](projects/vision-rl-pickplace) | Code, trained model and 47 automated tests |
 
 ## Repository structure
 
