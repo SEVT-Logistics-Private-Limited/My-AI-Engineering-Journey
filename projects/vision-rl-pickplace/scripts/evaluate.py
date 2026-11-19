@@ -8,6 +8,7 @@
 
     # Classical Vision + IK baseline, recording a GIF
     python scripts/evaluate.py --controller baseline --episodes 3 --video assets/baseline.gif
+    python scripts/evaluate.py --controller rl --episodes 3 --video runs/policy.mp4
 
 Both controllers see the same seeded object placements, so their numbers are comparable.
 Default seeds (30000+) are the held-out test set used for the README results.
@@ -19,7 +20,6 @@ import argparse
 import time
 from pathlib import Path
 
-import imageio.v2 as imageio
 import numpy as np
 
 from pickplace.camera import RGBDCamera, render_presentation
@@ -27,6 +27,7 @@ from pickplace.config import load_config
 from pickplace.env import PickLiftEnv
 from pickplace.pipeline import PickPipeline
 from pickplace.sim import Scene
+from pickplace.video import check_video_path, save_video
 
 
 class FrameRecorder:
@@ -45,11 +46,7 @@ class FrameRecorder:
     def save(self, path: str, fps: int) -> None:
         if not self.frames:
             return
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        if path.endswith(".gif"):
-            imageio.mimsave(path, self.frames, duration=1000 / fps, loop=0)
-        else:
-            imageio.mimsave(path, self.frames, fps=fps)
+        save_video(self.frames, path, fps)
         print(f"saved {len(self.frames)} frames -> {path}")
 
 
@@ -118,6 +115,11 @@ def main() -> None:
     args = parser.parse_args()
     if args.min_success is not None and not 0.0 <= args.min_success <= 1.0:
         parser.error("--min-success must be between 0 and 1")
+    if args.video is not None:
+        try:
+            check_video_path(args.video)
+        except ValueError as exc:
+            parser.error(str(exc))
 
     cfg = load_config(args.config)
     start = time.time()

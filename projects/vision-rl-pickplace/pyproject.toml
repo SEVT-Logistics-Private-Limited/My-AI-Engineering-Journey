@@ -13,7 +13,7 @@ dependencies = [
     "opencv-python-headless>=4.8",
     "gymnasium>=0.29",
     "pyyaml>=6.0",
-    "imageio>=2.31",
+    "imageio[ffmpeg]>=2.31",       # ffmpeg backend for MP4 recording
 ]
 
 [project.optional-dependencies]
