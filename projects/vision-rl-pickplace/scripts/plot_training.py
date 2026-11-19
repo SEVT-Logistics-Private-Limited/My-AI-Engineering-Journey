@@ -22,14 +22,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib.ticker import FuncFormatter, MultipleLocator  # noqa: E402
-
-# Colour tokens: series slot 1 plus chart chrome, light and dark.
-THEMES = {
-    "light": dict(surface="#fcfcfb", series="#2a78d6", ink="#0b0b0b", ink2="#52514e",
-                  muted="#898781", grid="#e1e0d9", axis="#c3c2b7"),
-    "dark": dict(surface="#1a1a19", series="#3987e5", ink="#f0efec", ink2="#c3c2b7",
-                 muted="#898781", grid="#2c2c2a", axis="#383835"),
-}
+from viz_theme import THEMES  # noqa: E402  (scripts/ is on sys.path when run directly)
 
 
 @dataclass(frozen=True)

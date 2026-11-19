@@ -33,6 +33,7 @@ class Detection:
     yaw: float                       # world-frame yaw, wrapped to [-pi/4, pi/4)
     area_px: int
     mask: np.ndarray                 # (H, W) bool blob mask
+    top_mask: np.ndarray | None = None  # (H, W) bool pixels kept by the top-face depth gate
 
 
 def deproject(u: float, v: float, depth: float, K: Intrinsics) -> np.ndarray:
@@ -95,7 +96,7 @@ class ColorObjectDetector:
             top_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE,
         )
         yaw = self._estimate_yaw(max(top_contours, key=cv2.contourArea), z, K, T_world_cam)
-        return Detection((u, v), position, yaw, int(area), blob_mask)
+        return Detection((u, v), position, yaw, int(area), blob_mask, top_mask)
 
     @staticmethod
     def _estimate_yaw(contour: np.ndarray, z: float, K: Intrinsics, T_world_cam: np.ndarray) -> float:
