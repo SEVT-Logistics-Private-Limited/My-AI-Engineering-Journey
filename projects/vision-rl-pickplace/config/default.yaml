@@ -60,7 +60,7 @@ grasp:
 
 rl:
   algorithm: SAC
-  total_timesteps: 60000         # validation success reaches 100% by ~35k steps
+  total_timesteps: 60000         # validation success reaches 100% at ~25-40k steps
   max_episode_steps: 100
   action_scale: 0.03            # max end-effector displacement per step
   obs_source: ground_truth      # ground_truth | perception

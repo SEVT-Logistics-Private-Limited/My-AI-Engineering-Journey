@@ -23,10 +23,10 @@ Test seeds 30000–30099 were evaluated **once, after development was frozen**. 
 
 | Controller | Object position from | Success (100 episodes) |
 |---|---|---|
-| Vision + IK baseline | Camera | __BASELINE__ |
-| SAC policy | Simulator ground truth (as trained) | __RL_GT__ |
-| SAC policy | **Camera + state estimator** | __RL_PERC__ |
-| SAC policy, cube yaw ±45° (never seen in training) | Simulator ground truth | __RL_YAW__ |
+| Vision + IK baseline | Camera | **100%** (100/100) |
+| SAC policy | Simulator ground truth (as trained) | **99%** (99/100) |
+| SAC policy | **Camera + state estimator** | **99%** (99/100) |
+| SAC policy, cube yaw ±45° (never seen in training) | Simulator ground truth | **100%** (100/100) |
 
 | Perception metric (100 placements vs ground truth) | Value |
 |---|---|
@@ -34,7 +34,7 @@ Test seeds 30000–30099 were evaluated **once, after development was frozen**. 
 | Yaw error | 0.5° mean · 3.8° max |
 | Detection rate, unoccluded | 100 / 100 |
 
-**Training:** SAC, 60 000 environment steps (validation success reaches 100% by about 35 000), __TRAIN_TIME__ on a 4-core CPU, no GPU.
+**Training:** SAC, 60 000 environment steps, 18 minutes on a 4-core CPU, no GPU. Validation success first reaches 100% at 25 000 steps and stays there from 40 000; the saved policy is the best validation checkpoint (40 000).
 
 **Reproducibility:** every episode is a pure function of its seed (see [engineering log](#engineering-log), item 4), so `python scripts/evaluate.py` reproduces these numbers on the same PyBullet build.
 
@@ -85,7 +85,7 @@ What broke during development, how it was found, and what fixed it. Each fix is 
 
 | # | Symptom | Root cause | Fix | Effect |
 |---|---|---|---|---|
-| 1 | Evaluation reward rose during training, but success stayed at 0% | **Reward hacking.** Holding the cube just below the success height collected grasp and lift bonuses every step, worth ~15 discounted, more than the one-time +10 success bonus. | A constant step penalty larger than the best per-step shaping reward, enforced by config validation | 0% → 85% success at 20k steps, 100% from 35k |
+| 1 | Evaluation reward rose during training, but success stayed at 0% | **Reward hacking.** Holding the cube just below the success height collected grasp and lift bonuses every step, worth ~15 discounted, more than the one-time +10 success bonus. | A constant step penalty larger than the best per-step shaping reward, enforced by config validation | 0% → 85% success at 20k steps, 100% at 25k |
 | 2 | Policy: 100% with ground truth, **21%** with the camera | (a) The estimate stayed at the table while the cube was lifted, so the policy kept re-grasping. (b) Detections of a partly hidden cube (42 px of 330) were accepted, giving biased positions. | `ObjectStateEstimator`: trust a detection only if its blob is ≥ 80% of the unoccluded area; while the cube is held, move its estimate with the hand (forward kinematics) | 21% → 98% on development seeds |
 | 3 | Estimate dragged 6 cm away during a failed grasp | **False attachment.** A corner pinch (width 0.65 × cube size) counted as a grasp. | Hold band from cube geometry: face-to-face (1.0×) to across the diagonal (√2×). Attach only once the fingers are still for two frames. | 98% → 100% on development seeds |
 | 4 | Same seed, different outcome | **Non-deterministic resets.** Bullet keeps solver and contact caches across resets; `saveState`/`restoreState` did not clear them (verified). Trajectories diverged by up to 6 cm depending on the previous episode. | Rebuild the physics world each episode | Bit-identical rollouts per seed; regression test |
@@ -108,7 +108,7 @@ python scripts/detect_object.py --trials 10          # Phase 1: camera → 3D po
 python scripts/run_baseline.py --episodes 20         # Phase 2: Vision + IK pick-and-place
 python scripts/evaluate.py --controller rl           # Phase 3: trained policy, test seeds
 python scripts/evaluate.py --controller rl --obs-source perception
-python scripts/train_rl.py                           # retrain from scratch (__TRAIN_TIME_SHORT__ on 4 CPU cores)
+python scripts/train_rl.py                           # retrain from scratch (~18 min on 4 CPU cores)
 tensorboard --logdir runs/
 pytest -q                                            # 37 tests, ~10 s
 ```
@@ -154,7 +154,8 @@ vision-rl-pickplace/
 ## Limitations and future work
 
 - **Single, uniquely coloured object under fixed lighting.** HSV thresholding is the weakest link for the real world. Next step: a learned detector or instance segmentation, then point-cloud grasp pose estimation for clutter.
-- **Hidden displacement.** If the hand knocks the cube while the arm fully hides it from the overhead camera, the estimate cannot recover until the cube is visible again. This caused a failure during development (seed 20049). A wrist camera or a second viewpoint would close the gap.
+- **Hidden displacement.** If the hand knocks the cube while the arm fully hides it from the overhead camera, the estimate cannot recover until the cube is visible again. This is the camera-mode test failure (seed 30056: cube pushed 3.9 cm, estimate 37 mm off). A wrist camera or a second viewpoint would close the gap.
+- **Rare policy stall.** In the ground-truth test failure (seed 30023), the policy held a tilted cube for 92 steps but hovered instead of lifting. More varied grasp starts during training, or a reward term for lift progress, would target this.
 - **No wrist rotation in the policy.** The policy still picks up rotated cubes (±45°, never seen in training) because the 8 cm gripper opening is wider than the cube's 5.7 cm diagonal, so closing the fingers aligns it. Elongated objects would need a yaw action.
 - **State-based RL.** The policy sees an estimated 3D position, not pixels. Visual RL (an image encoder with data augmentation, e.g. DrQ) would remove the hand-designed perception stage at a much higher sample cost.
 - **No domain randomisation.** Friction, mass, camera pose and lighting are fixed, so sim-to-real transfer is untested. Randomising them during training is required before hardware.
