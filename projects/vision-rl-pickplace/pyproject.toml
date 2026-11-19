@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pickplace"
 version = "0.1.0"
-description = "Vision-guided pick-and-place with a Franka Panda in PyBullet: classical CV + IK baseline and an RL policy."
+description = "Vision-guided pick-and-lift with a Franka Panda in PyBullet: classical CV + IK baseline and an RL policy."
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",

@@ -1,4 +1,4 @@
-name: vision-rl-pickplace
+name: vision-rl-pick-and-lift
 
 on:
   # PR branches are covered by pull_request; push only on main avoids

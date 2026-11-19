@@ -43,3 +43,9 @@ def test_reward_that_permits_hovering_is_rejected(tmp_path):
     path = _write(tmp_path, lambda d: d["rl"]["reward"].update(step_penalty=0.0))
     with pytest.raises(ConfigError, match="hover"):
         load_config(path)
+
+
+def test_success_threshold_above_baseline_lift_is_rejected(tmp_path):
+    path = _write(tmp_path, lambda d: d["task"].update(success_lift=0.25))   # baseline lifts 0.20
+    with pytest.raises(ConfigError, match="success_lift"):
+        load_config(path)

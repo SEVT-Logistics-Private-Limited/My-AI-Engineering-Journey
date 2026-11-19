@@ -72,6 +72,11 @@ class PerceptionConfig:
 
 
 @dataclass(frozen=True)
+class TaskConfig:
+    success_lift: float
+
+
+@dataclass(frozen=True)
 class GraspConfig:
     pregrasp_height: float
     lift_height: float
@@ -79,7 +84,6 @@ class GraspConfig:
     position_tolerance: float
     max_move_steps: int
     gripper_settle_steps: int
-    success_lift: float
 
 
 @dataclass(frozen=True)
@@ -111,7 +115,6 @@ class RLConfig:
     obs_source: str
     object_yaw_range: list[float]
     reward: RewardConfig
-    success_lift: float
     sac: SACConfig
     seed: int
 
@@ -124,6 +127,7 @@ class Config:
     workspace: WorkspaceConfig
     camera: CameraConfig
     perception: PerceptionConfig
+    task: TaskConfig
     grasp: GraspConfig
     rl: RLConfig
 
@@ -175,8 +179,11 @@ def _validate(cfg: Config) -> None:
     check(cfg.rl.obs_source in ("ground_truth", "perception"), "rl.obs_source invalid")
     check(cfg.rl.algorithm in ("SAC", "PPO"), "rl.algorithm must be SAC or PPO")
     check(cfg.rl.action_scale > 0, "rl.action_scale must be positive")
+    check(0 < cfg.task.success_lift < cfg.grasp.lift_height,
+          "task.success_lift must be positive and below grasp.lift_height, "
+          "or the scripted baseline could never succeed")
     w = cfg.rl.reward
-    max_shaped = w.grasp_bonus + w.lift_weight * cfg.rl.success_lift
+    max_shaped = w.grasp_bonus + w.lift_weight * cfg.task.success_lift
     check(
         w.step_penalty > max_shaped,
         f"rl.reward.step_penalty ({w.step_penalty}) must exceed the max per-step shaping "
