@@ -1,0 +1,84 @@
+# Single source of truth for the simulation, perception, control and RL.
+# All lengths in metres, angles in radians, unless noted.
+
+sim:
+  time_step: 0.004166667        # 240 Hz physics
+  control_substeps: 10          # physics steps per control step -> 24 Hz control
+  gravity: -9.81
+
+robot:
+  urdf: franka_panda/panda.urdf
+  base_position: [0.0, 0.0, 0.0]
+  home_joints: [0.0, -1.0, 0.0, -2.8, 0.0, 1.9, 0.785]  # tucked: outside the camera view
+  arm_max_force: 240.0
+  gripper_max_force: 40.0
+  gripper_open_width: 0.08      # total finger opening
+
+object:
+  size: 0.04                    # cube edge length
+  mass: 0.1
+  color_rgba: [0.85, 0.1, 0.1, 1.0]
+  lateral_friction: 1.0
+  yaw_range: [-0.785, 0.785]    # randomised cube yaw for the baseline
+
+workspace:
+  # Region where the object spawns and the end-effector is allowed to move.
+  object_x: [0.40, 0.65]
+  object_y: [-0.20, 0.20]
+  ee_low: [0.30, -0.30, 0.01]
+  ee_high: [0.75, 0.30, 0.35]
+
+camera:
+  # Overhead RGB-D camera. Intrinsics are derived from fov + resolution.
+  width: 320
+  height: 240
+  fov_deg: 40.0
+  near: 0.05
+  far: 2.0
+  eye: [0.525, 0.0, 0.75]
+  target: [0.525, 0.0, 0.0]
+  up: [-1.0, 0.0, 0.0]
+
+perception:
+  # HSV thresholds for the red cube (OpenCV hue range 0-179, red wraps around 0).
+  hsv_ranges:
+    - [[0, 120, 70], [10, 255, 255]]
+    - [[170, 120, 70], [179, 255, 255]]
+  min_area_px: 30
+  top_face_tolerance: 0.01      # keep pixels within this depth of the nearest surface
+  morph_kernel: 3
+
+grasp:
+  pregrasp_height: 0.12         # above object centre
+  lift_height: 0.20
+  grasp_z_offset: 0.0           # added to estimated object-centre height
+  position_tolerance: 0.005
+  max_move_steps: 120           # control steps per waypoint before giving up
+  gripper_settle_steps: 20
+  success_lift: 0.08            # object must rise this much to count as picked
+
+rl:
+  algorithm: SAC
+  total_timesteps: 150000
+  max_episode_steps: 100
+  action_scale: 0.03            # max end-effector displacement per step
+  obs_source: ground_truth      # ground_truth | perception
+  object_yaw_range: [0.0, 0.0]  # fixed yaw keeps the RL task tractable on CPU
+  reward:
+    distance_weight: 1.0
+    grasp_bonus: 0.25
+    lift_weight: 10.0
+    success_bonus: 10.0
+    # Keeps every per-step reward negative (max shaped gain is 0.25 + 10*0.05 = 0.75),
+    # so finishing always beats hovering with the cube to farm grasp/lift bonuses.
+    step_penalty: 1.0
+  success_lift: 0.05
+  sac:
+    learning_rate: 0.0003
+    buffer_size: 300000
+    batch_size: 256
+    gamma: 0.95
+    tau: 0.005
+    learning_starts: 2000
+    net_arch: [256, 256]
+  seed: 0

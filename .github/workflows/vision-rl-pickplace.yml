@@ -1,0 +1,33 @@
+name: vision-rl-pickplace
+
+on:
+  push:
+    paths: ["projects/vision-rl-pickplace/**", ".github/workflows/vision-rl-pickplace.yml"]
+  pull_request:
+    paths: ["projects/vision-rl-pickplace/**", ".github/workflows/vision-rl-pickplace.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/vision-rl-pickplace
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install (CPU-only torch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Unit and integration tests
+        run: pytest -q
+      - name: Baseline smoke run
+        run: python scripts/run_baseline.py --episodes 5
+      - name: Trained policy smoke run
+        run: python scripts/evaluate.py --controller rl --episodes 5
