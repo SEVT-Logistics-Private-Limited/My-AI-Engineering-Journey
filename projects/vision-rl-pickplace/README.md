@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-2563eb)
 ![Simulator](https://img.shields.io/badge/sim-PyBullet-16a34a)
 ![RL](https://img.shields.io/badge/RL-SAC%20(Stable--Baselines3)-7c3aed)
-![Tests](https://img.shields.io/badge/tests-37%20passing-16a34a)
+![Tests](https://img.shields.io/badge/tests-45%20passing-16a34a)
 
 <img src="assets/rl_policy.gif" width="420" alt="Trained SAC policy picking up the cube"> <img src="assets/baseline.gif" width="420" alt="Vision + IK baseline picking up the cube">
 
@@ -37,6 +37,33 @@ Test seeds 30000–30099 were evaluated **once, after development was frozen**. 
 **Training:** SAC, 60 000 environment steps, 18 minutes on a 4-core CPU, no GPU. Validation success first reaches 100% at 25 000 steps and stays there from 40 000; the saved policy is the best validation checkpoint (40 000).
 
 **Reproducibility:** every episode is a pure function of its seed (see [engineering log](#engineering-log), item 4), so `python scripts/evaluate.py` reproduces these numbers on the same PyBullet build.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/training_curve_dark.png">
+  <img src="assets/training_curve.png" width="100%" alt="Two line charts against training steps. Validation success rate: 0% up to 15K steps, 85% at 20K, 100% from 25K with one dip to 95% at 35K. Steps to finish an episode: 100, the time limit, up to 15K, then about 12 steps from 25K onward. A vertical line marks the saved checkpoint at 40K.">
+</picture>
+
+<details>
+<summary>Training curve data (20 validation episodes per point)</summary>
+
+| Training steps | Success rate | Mean episode length | Mean return |
+|---|---|---|---|
+| 5,000 | 0% | 100.0 | -114.20 |
+| 10,000 | 0% | 100.0 | -84.34 |
+| 15,000 | 0% | 100.0 | -84.02 |
+| 20,000 | 85% | 26.6 | -17.41 |
+| 25,000 | 100% | 12.8 | -1.51 |
+| 30,000 | 100% | 14.3 | -2.58 |
+| 35,000 | 95% | 16.1 | -4.71 |
+| 40,000 (saved) | 100% | 11.3 | -0.29 |
+| 45,000 | 100% | 11.8 | -0.71 |
+| 50,000 | 100% | 11.7 | -0.78 |
+| 55,000 | 100% | 11.4 | -0.32 |
+| 60,000 | 100% | 11.7 | -0.60 |
+
+Regenerate the chart from any run with `python scripts/plot_training.py --run runs/<name>`. The values are also in [`assets/training_curve.csv`](assets/training_curve.csv).
+
+</details>
 
 | Seeds | Used for |
 |---|---|
@@ -109,11 +136,12 @@ python scripts/run_baseline.py --episodes 20         # Phase 2: Vision + IK pick
 python scripts/evaluate.py --controller rl           # Phase 3: trained policy, test seeds
 python scripts/evaluate.py --controller rl --obs-source perception
 python scripts/train_rl.py                           # retrain from scratch (~18 min on 4 CPU cores)
+python scripts/plot_training.py --run runs/<name>    # validation curve → assets/ (light + dark PNG, CSV)
 tensorboard --logdir runs/
-pytest -q                                            # 37 tests, ~10 s
+pytest -q                                            # 45 tests, ~10 s
 ```
 
-Add `--gui` to `run_baseline.py` to watch in the PyBullet window, `--video out.gif` to `evaluate.py` to record, or `--min-success 0.9` to make `evaluate.py` fail below a success rate (used in CI).
+Add `--gui` to `run_baseline.py` to watch in the PyBullet window, `--video out.gif` or `--video out.mp4` to `evaluate.py` to record, or `--min-success 0.9` to make `evaluate.py` fail below a success rate (used in CI).
 
 ## The RL task
 
@@ -140,15 +168,17 @@ vision-rl-pickplace/
 │   ├── kinematics.py          IK + Cartesian control of the Panda
 │   ├── pipeline.py            Classical Vision → IK → grasp baseline
 │   ├── env.py                 Gymnasium environment (PickLift-v0)
-│   └── utils.py               Transform helpers
+│   ├── utils.py               Transform helpers
+│   └── video.py               GIF / MP4 writer
 ├── scripts/
 │   ├── detect_object.py       Phase 1 milestone
 │   ├── run_baseline.py        Phase 2 milestone
 │   ├── train_rl.py            Phase 3: SAC / PPO training
-│   └── evaluate.py            Success rates, video recording, CI gate
+│   ├── evaluate.py            Success rates, video recording, CI gate
+│   └── plot_training.py       Validation curve chart (light/dark) + CSV
 ├── models/sac_picklift.zip    Trained policy (best validation checkpoint)
-├── tests/                     37 tests: config, perception, estimator, IK, baseline, env, determinism
-└── assets/                    GIFs and debug images
+├── tests/                     45 tests: config, perception, estimator, IK, baseline, env, determinism, video, plotting
+└── assets/                    GIFs, training curve (PNG + CSV), debug images
 ```
 
 ## Limitations and future work

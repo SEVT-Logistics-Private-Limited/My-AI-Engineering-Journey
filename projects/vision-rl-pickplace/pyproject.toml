@@ -13,12 +13,12 @@ dependencies = [
     "opencv-python-headless>=4.8",
     "gymnasium>=0.29",
     "pyyaml>=6.0",
-    "imageio>=2.31",
+    "imageio[ffmpeg]>=2.31",       # ffmpeg backend for MP4 recording
 ]
 
 [project.optional-dependencies]
 rl = ["stable-baselines3>=2.3", "tensorboard>=2.14"]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "matplotlib>=3.7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
