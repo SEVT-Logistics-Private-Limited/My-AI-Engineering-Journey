@@ -172,7 +172,7 @@ flowchart LR
 | [Project overview](projects/telugu-voice-assistant/README.md) | Executive summary, architecture, API and deployment |
 | [Live assistant](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) | Try Yodha (sign-in required) |
 | [Topics covered](projects/telugu-voice-assistant/README.md#topics-covered-in-this-project) | How the 14 applied topics map to the assistant |
-| [Source code](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) | Application, deployment and model-training code |
+| [Implementation & Source Code → Tiny LLM on NVIDIA Jetson](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) | Application, deployment and model-training code |
 
 ## Robotics project
 
