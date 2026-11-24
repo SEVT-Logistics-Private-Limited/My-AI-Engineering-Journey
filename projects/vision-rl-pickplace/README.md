@@ -296,4 +296,4 @@ This project applies topics explained in [My AI Engineering Journey](../../READM
 
 ## Author and contact
 
-**Rishi Sasanala**, sole author · [rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) · [GitHub](https://github.com/rishisasanala) · part of [My AI Engineering Journey](../../README.md)
+**Rishi Sasanala**, sole author · [rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) · part of [My AI Engineering Journey](../../README.md)

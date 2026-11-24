@@ -4,7 +4,7 @@
 
 **Production LLM applications and robot learning, built end to end, with the engineering notes behind them.**
 
-Rishi Sasanala · [Email](mailto:rishisasanala@gmail.com) · [GitHub](https://github.com/rishisasanala)
+Rishi Sasanala · [Email](mailto:rishisasanala@gmail.com)
 
 [Projects](#featured-projects) · [Skills](#skills-and-technologies) · [Engineering notes](#engineering-notes) · [Roadmap](#roadmap) · [Contact](#contact)
 
@@ -119,4 +119,4 @@ Details, including the learning topics planned next: [ROADMAP.md](ROADMAP.md).
 
 I'm Rishi Sasanala. I build AI systems end to end, from training and evaluating models to shipping secure, tested services. Questions about any of this work are welcome.
 
-[rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) · [GitHub](https://github.com/rishisasanala) · Yodha AI, SEVT Logistics Private Limited
+[rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) · Yodha AI, SEVT Logistics Private Limited
