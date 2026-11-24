@@ -90,11 +90,11 @@ Text ("AI") → Characters (A, I) → Numbers (65, 73) → Binary (01000001 0100
 
 ## In our project
 
-**Used.** Text is the form everything passes through: the user's Telugu speech becomes Telugu text, the question is translated to English text, the vehicle manuals are English text, and the answer is Telugu text before it is spoken.
+**Used.** Text is the form everything passes through: the user's Telugu speech becomes Telugu text, the question is translated to English text when needed, the vehicle manuals are English text, and the answer is Telugu text before it is spoken.
 
 | Where | How text as numbers shows up |
 |---|---|
-| **Telugu detection** | We count characters that fall in the Telugu Unicode range (`ఀ`–`౿`) to check that an answer really is in Telugu. See [NLP](09-nlp.md). |
+| **Telugu detection** | We count characters that fall in the Telugu Unicode range (`ఀ`–`౿`) to decide which lines of an answer are spoken: lines without Telugu are left out of the audio. See [NLP](09-nlp.md). |
 | **Our own tokenizer** | Our Telugu model uses a character-level tokenizer: each of the 245 unique Telugu characters in the training text gets its own ID. See [Tokenization](34-tokenization.md). |
 
 For an LLM, character numbers are only the starting point: text is regrouped into **tokens**, and each token gets its own ID. That step is covered in [Tokenization](34-tokenization.md).

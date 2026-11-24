@@ -105,13 +105,15 @@ Vector database
 ```text
 User asks in Telugu: "ఇంజిన్ ఆయిల్ ఎప్పుడు మార్చాలి?"
         ↓
-Translate to English: "When should I change the engine oil?"
+Embedding (multilingual-e5-small, with "query:" prefix): works for Telugu and English
         ↓
-Embedding (multilingual-e5-small, with "query:" prefix)
-        ↓
-Search ChromaDB (vehicle_manuals)
+Search ChromaDB (vehicle_manuals) with the Telugu question
         ↓
 Closest chunk close enough? (distance ≤ 0.35)
+   ├── yes → use it
+   └── no  → translate to English ("When should I change the engine oil?") and search again
+        ↓
+Close enough now?
    ├── yes → add the manual text + source to the prompt
    └── no  → answer without the manual
         ↓
@@ -121,7 +123,8 @@ User hears the answer
 ```
 
 Details:
-- The question is translated first because the **manuals are in English**.
+- The Telugu question is searched **directly first** (about 20 ms), because the embedding model is multilingual. Only when that misses is it translated to English, the language of the **manuals**, which costs an extra LLM call (about 1 s).
+- Each search writes one structured log line (search path, distances, time in ms), which a retrieval evaluation can be scored against.
 - The manual passage is limited to **1,200 characters** to keep the prompt small.
 - The database loads in the **background** when the server starts, so the app works even if the database isn't available.
 - `GET /` reports `"kb": "loaded"` or `"kb": "disabled"`, so we can check whether RAG is active.

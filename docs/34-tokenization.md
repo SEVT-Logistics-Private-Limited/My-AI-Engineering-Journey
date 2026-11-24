@@ -87,7 +87,7 @@ The token-to-ID table (`stoi`) is saved inside the model file, so the same token
 
 Fewer output tokens means **faster and cheaper** answers, which matters for a voice assistant.
 
-Code: [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_telugu.py), [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py)
+Code: [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/telugu/tiny_llm_telugu.py), [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py)
 
 ---
 

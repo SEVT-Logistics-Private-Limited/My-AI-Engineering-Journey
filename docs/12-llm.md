@@ -99,10 +99,10 @@ The LLM does three jobs in our voice assistant:
 | **Translate** | Telugu question → English for the manual search |
 | **Speech to text (backup)** | Transcribes Telugu audio when the browser can't |
 
-**Fallback chain:** if one model fails or returns nothing, the next one is tried automatically.
+**Fallback chain:** if one model fails or returns nothing, the next one is tried automatically. A transient server error gets one retry first, and the chain can be changed through the `LLM_MODELS` environment variable without a code change.
 
 ```text
-gemini-3.6-flash → (fails) → gemini-2.0-flash → (fails) → gemini-1.5-flash → (all fail) → polite Telugu apology
+gemini-3.6-flash → (fails) → gemini-3.8-flash → (fails) → gemini-3.5-flash-lite → (all fail) → polite Telugu apology
 ```
 
 - Answers are limited to **500 output tokens** (`max_output_tokens`) to keep them short and fast.
@@ -110,17 +110,19 @@ gemini-3.6-flash → (fails) → gemini-2.0-flash → (fails) → gemini-1.5-fla
 
 ### 2. We built our own GPT-style models from scratch
 
-| Model | Parameters | Trained on |
-|---|---|---|
-| Rung 1 | 984 | Jetson Orin Nano |
-| Rung 2 | 990K | Jetson Orin Nano |
-| Rung 5 | ~1B | Colab A100 |
-| Rung 7 | ~3B | Colab A100 |
-| **Telugu model** | **25M** | Colab A100, real Telugu text |
+The same decoder-only architecture, written from scratch in PyTorch, was trained in two settings:
+
+| Model | Parameters | Training text | Trained on |
+|---|---|---|---|
+| **Telugu model** | **25M** | 50,000 real Telugu sentences (2.9 million characters) | Colab A100 |
+| Scaling study, rungs 1–3 | 984 → 990K → 151M | One English sentence repeated 200 times (13-character vocabulary) | Jetson Orin Nano |
+| Scaling study, rungs 4–8 | 399M → 3.07B | The same sentence | Colab A100 |
+
+The **Telugu model** is the real language model: it learned to generate Telugu text. The **scaling study** answers a different question, how large a model each GPU can train, so it uses a tiny corpus on purpose: it is a memory experiment, not a test of language ability. The memory results are in [GPU](02-gpu.md#how-far-did-we-train-on-each-gpu).
 
 Each one is a decoder-only model that generates text **token by token**, exactly as described above. The goal is to eventually replace Gemini with our own Telugu model.
 
-Code: [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py) (`_llm_call_with_fallback`, `telugu_llm`), [`tiny_llm.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm.py), [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_telugu.py)
+Code: [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py) (`_llm_call_with_fallback`, `telugu_llm`), [`tiny_llm.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/scaling/tiny_llm.py), [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/telugu/tiny_llm_telugu.py)
 
 ---
 

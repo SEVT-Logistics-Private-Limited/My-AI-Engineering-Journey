@@ -1,0 +1,29 @@
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  # Weekly external check: catches links broken by changes in other repositories.
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Internal links, anchors and image alt text
+        run: python3 .github/scripts/check_links.py
+      - name: External links
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: python3 .github/scripts/check_links.py --external
