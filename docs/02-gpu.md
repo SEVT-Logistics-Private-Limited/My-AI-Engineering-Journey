@@ -73,12 +73,14 @@ Model size (parameters) × 16 bytes  →  training memory needed  →  fits in G
 
 ## In our project
 
-**Used, for training our own language models.** Training means billions of calculations, so it needs a GPU.
+**Used, for training our own models from scratch.** Training means billions of calculations, so it needs a GPU.
 
 | GPU | What we trained on it |
 |---|---|
-| **NVIDIA Jetson Orin Nano** (small edge device) | The first models: 984 parameters → 990K → 151M |
-| **Google Colab A100 (80 GB)** | Bigger models: 399M → 1B → 2B → 3B parameters, and the 25M Telugu model |
+| **NVIDIA Jetson Orin Nano** (small edge device) | Scaling study, rungs 1–3: 984 parameters → 990K → 151M |
+| **Google Colab A100 (80 GB)** | Scaling study, rungs 4–8: 399M → 1B → 2B → 3B → 3.07B parameters; and the 25M Telugu model |
+
+The **scaling study** trains the same GPT-style model at growing sizes to find how large a model each GPU can train. It uses a deliberately tiny corpus, one English sentence repeated 200 times, so it measures memory limits, not language ability. The **Telugu model** is the one trained on real text: 50,000 Telugu sentences.
 
 GPU techniques we used to fit large models into GPU memory:
 - **bf16 (16-bit numbers)** instead of 32-bit, which halves the memory (binary in action)
@@ -117,7 +119,7 @@ Training memory per model (calculated from each model's size at 16 bytes per par
 
 Note: "using the GPU" has two meanings. **Memory** (how much VRAM is filled) is what we calculated above. **Compute** (how busy the GPU cores are, in %) wasn't logged during training. It can be checked live with `nvidia-smi` on the A100 or `tegrastats` on the Jetson.
 
-Code: [`tiny_llm_400m.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_400m.py) (bf16 + gradient checkpointing), [`tiny_llm_3b.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_3b.py) (bf16 save), [`tiny_llm_5b.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_5b.py) (3.07B, hardware maximum)
+Code: [`tiny_llm_400m.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/scaling/tiny_llm_400m.py) (bf16 + gradient checkpointing), [`tiny_llm_3b.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/scaling/tiny_llm_3b.py) (bf16 save), [`tiny_llm_5b.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/scaling/tiny_llm_5b.py) (3.07B, hardware maximum)
 
 ---
 

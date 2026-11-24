@@ -55,14 +55,14 @@ NLP  →  helps the computer  →  understand  →  process  →  work with huma
 |---|---|
 | **Understand speech** | Telugu speech → Telugu text (browser speech recognition, `te-IN`, with Gemini as backup) |
 | **Recognise simple requests** | Exact keyword matching for time, date and greetings (`సమయం`, `తేదీ`, `నమస్కారం`…), answered instantly without the LLM |
-| **Translate** | Telugu question → English, so it can be matched against the English vehicle manuals |
+| **Translate (only when needed)** | The Telugu question is first matched against the English manuals directly, using a multilingual embedding model. Only if nothing close enough is found is it translated to English and searched again |
 | **Understand and answer** | The LLM reads the question and generates a Telugu answer |
 | **Clean the text** | Remove symbols (`*`, `#`), list numbers and English-only lines so speech sounds natural |
-| **Detect the language** | Count Telugu characters (Unicode range `ఀ`–`౿`). If the answer has almost no Telugu, reply "మళ్ళీ చెప్పగలరా?" ("Can you say that again?") |
+| **Detect the language** | Count Telugu characters (Unicode range `ఀ`–`౿`) line by line. Lines with no Telugu that are mostly English words, usually a translation the model added, are left out of the spoken answer; if nothing Telugu is left, the original is spoken. The text on screen is unchanged |
 
 ```text
 "ఇప్పుడు సమయం?" (what's the time?) → keyword match → instant answer
-"ఇంజిన్ ఆయిల్ ఎప్పుడు మార్చాలి?" (when to change engine oil?) → translate → RAG → LLM → Telugu answer
+"ఇంజిన్ ఆయిల్ ఎప్పుడు మార్చాలి?" (when to change engine oil?) → RAG (translated to English only if needed) → LLM → Telugu answer
 ```
 
 Code: [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py) (functions `check_instant`, `gemini_translate`, `clean_for_tts`)

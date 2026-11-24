@@ -127,7 +127,7 @@ Audio (binary bytes) → base64 text → sent in JSON → decoded back to bytes 
 
 ### How far can our models train on a CPU? (measured)
 
-We trained our own GPT models on GPUs. To compare, we timed the **exact same model settings** on a **4-core cloud CPU** (Intel Xeon, 16 GB RAM):
+We trained our own GPT-style models on GPUs: a scaling study from 984 parameters to 3 billion, on a tiny one-sentence corpus (see [GPU](02-gpu.md#in-our-project)), and the 25M Telugu model. To compare, we timed the **exact same model settings** on a **4-core cloud CPU** (Intel Xeon, 16 GB RAM):
 
 | Our model | Parameters | Time per training step (CPU) | Full training run on CPU | Same run on the Jetson GPU (from our model cards) |
 |---|---|---|---|---|
@@ -139,7 +139,7 @@ We trained our own GPT models on GPUs. To compare, we timed the **exact same mod
 
 **Answer: on a typical CPU you can practically train models up to about 100–150 million parameters**, and each run takes hours. Above about 1 billion parameters, an ordinary computer runs out of memory. That's why all our real training happened on GPUs.
 
-Code: [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py) · Model settings: [`tiny_llm_1m.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_1m.py), [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_telugu.py), [`tiny_llm_150m.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_150m.py)
+Code: [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py) · Model settings: [`tiny_llm_1m.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/scaling/tiny_llm_1m.py), [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/telugu/tiny_llm_telugu.py), [`tiny_llm_150m.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/scaling/tiny_llm_150m.py)
 
 ---
 

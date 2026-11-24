@@ -173,7 +173,7 @@ How the parts on this page appear in our code:
 - **Embeddings:** a token embedding table plus a position embedding table (positional encoding)
 - **Self-attention + feed-forward:** inside every layer (`Block` class)
 - **Masking:** a causal mask (`torch.triu`) hides future tokens, the exam example in code
-- The same `Block` was reused for every model from **984 parameters to 3 billion**
+- The same `Block` was reused for every model, from 984 parameters to the 3-billion-parameter models of the [GPU scaling study](02-gpu.md#in-our-project)
 
 **2. The embedding model for RAG** (`multilingual-e5-small`) is a Transformer **encoder**. It *understands* the question and turns it into a vector.
 
@@ -184,7 +184,7 @@ Encoder (understands): multilingual-e5-small → question becomes a vector for s
 Decoder (generates):   Gemini and our Telugu GPT → write the answer token by token
 ```
 
-Code: [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm_telugu.py), [`tiny_llm.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/tiny_llm.py)
+Code: [`tiny_llm_telugu.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/telugu/tiny_llm_telugu.py), [`tiny_llm.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/research/scaling/tiny_llm.py)
 
 ---
 

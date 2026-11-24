@@ -66,15 +66,15 @@ Question → RAG (real documents) + better prompt + low temperature → LLM → 
 | **Live-data rule** | For cricket scores, weather and news, reply "అది నాకు live గా తెలియదు మిత్రమా" ("I don't know that live") | Better prompts |
 | **RAG** | Answers about vehicles use the real manual passage | RAG, source grounding |
 | **Relevance check** | A manual passage is used only if it's close enough (distance ≤ 0.35), so unrelated text isn't used | Validation |
-| **Output check** | If the answer has fewer than 3 Telugu characters, reply "మళ్ళీ చెప్పగలరా?" ("Can you say that again?") instead | Validation |
 
 ```text
 Question about live cricket score → prompt rule → "I don't know that live"
 Question about engine oil         → RAG finds the manual → grounded answer
-Answer comes back in English only → output check → "Can you say that again?"
 ```
 
-Code: [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py) (functions `build_system`, `retrieve_manual_context`, `clean_for_tts`)
+How often these protections succeed has not been measured yet. A retrieval evaluation set is on the [roadmap](../ROADMAP.md).
+
+Code: [`voice-assistant/api.py`](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/blob/main/voice-assistant/api.py) (functions `build_system`, `retrieve_manual_context`)
 
 ---
 
