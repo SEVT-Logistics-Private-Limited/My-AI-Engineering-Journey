@@ -11,7 +11,7 @@
 ![Gemini](https://img.shields.io/badge/LLM-Google%20Gemini-4285f4)
 ![ChromaDB](https://img.shields.io/badge/RAG-ChromaDB-e8710a)
 
-[**Open the live assistant**](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) · [Source code](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) · [How it works](#how-it-works) · [API](#api)
+[**Open the live assistant**](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) · [Implementation & Source Code → Tiny LLM on NVIDIA Jetson](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) · [How it works](#how-it-works) · [API](#api)
 
 <img src="images/assistant-sign-in.png" alt="Sign-in screen of the live Yodha assistant" width="300">
 
@@ -204,7 +204,7 @@ Behind the scenes: our own Telugu model trained on a GPU (GPU, DL, Transformers,
 |---|---|
 | [Live assistant](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) | Try Yodha (sign-in required) |
 | [API specification](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/openapi.json) | Machine-readable OpenAPI description of every endpoint |
-| [Source code](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) | Application, deployment and model-training code |
+| [Implementation & Source Code → Tiny LLM on NVIDIA Jetson](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson) | Application, deployment and model-training code |
 | [RAG](../../docs/14-rag.md), [LLM](../../docs/12-llm.md), [Hallucination](../../docs/33-hallucination.md) | The concepts behind the assistant, explained |
 
 ## Author and contact
