@@ -212,6 +212,13 @@ pytest -q                                            # 47 tests, ~10 s
 
 Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer; `--video out.gif` or `--video out.mp4` on `evaluate.py` records the episodes; `--min-success 0.9` makes `evaluate.py` fail below a success rate.
 
+**Verified from a clean install (November 2026)** on a 4-core CPU with Python 3.13, PyTorch 2.15 (CPU), Stable-Baselines3 2.9.2, Gymnasium 1.4.0 and PyBullet 3.2.7 built from source:
+
+- all 47 tests pass;
+- every success rate in [Results](#results) reproduces exactly, including which seed fails;
+- retraining from scratch took 21 minutes, matched the validation curve at every point, and produced a policy bit-identical to the committed `models/sac_picklift.zip`;
+- perception error varies slightly with the PyBullet build: five seed sets of 100 placements gave 1.6–1.7 mm mean and under 3 mm max error.
+
 ## Testing and CI
 
 - **47 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipeline, the Gymnasium environment, determinism, video and figures.
@@ -289,4 +296,4 @@ This project applies topics explained in [My AI Engineering Journey](../../READM
 
 ## Author and contact
 
-**Rishi Sasanala** · [rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) · [GitHub](https://github.com/rishisasanala) · part of [My AI Engineering Journey](../../README.md)
+**Rishi Sasanala**, sole author · [rishisasanala@gmail.com](mailto:rishisasanala@gmail.com) · [GitHub](https://github.com/rishisasanala) · part of [My AI Engineering Journey](../../README.md)
