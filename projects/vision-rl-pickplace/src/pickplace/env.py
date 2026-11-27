@@ -47,6 +47,8 @@ OBS_DIM = 10
 
 class PickLiftEnv(gym.Env):
     metadata = {"render_modes": ["rgb_array"], "render_fps": 24}
+    # Subclasses for other tasks may model the gripper's coupled fingers (see Scene).
+    _COUPLED_FINGERS = False
 
     def __init__(self, cfg: Config | None = None, obs_source: str | None = None,
                  render_mode: str | None = None, gui: bool = False):
@@ -59,7 +61,7 @@ class PickLiftEnv(gym.Env):
             raise ValueError(f"unsupported render_mode {render_mode!r}")
         self.render_mode = render_mode
 
-        self.scene = Scene(self.cfg, gui=gui)
+        self.scene = Scene(self.cfg, gui=gui, coupled_fingers=self._COUPLED_FINGERS)
         self.controller = PandaController(self.scene)
         self.camera = RGBDCamera(self.cfg.camera, self.scene.client)
         self.detector = ColorObjectDetector(self.cfg.perception)
@@ -86,12 +88,20 @@ class PickLiftEnv(gym.Env):
     # ------------------------------------------------------------- gym API
     def reset(self, *, seed: int | None = None, options: dict[str, Any] | None = None):
         super().reset(seed=seed)
-        rl = self.cfg.rl
+        self._reset_object()
+        self._reset_arm()
+        return self._observe(), self._info()
+
+    def _reset_object(self, yaw_range: list[float] | None = None) -> None:
+        """Fresh world with the cube at a random spot (draws from ``np_random``)."""
+        yaw_range = self.cfg.rl.object_yaw_range if yaw_range is None else yaw_range
         self.scene.reset()
-        self.scene.randomize_object(self.np_random, yaw_range=rl.object_yaw_range)
+        self.scene.randomize_object(self.np_random, yaw_range=yaw_range)
         self.scene.step(10)  # let the cube settle on the floor
         self._object_z0 = float(self.scene.object_state().position[2])
 
+    def _reset_arm(self) -> None:
+        """Gripper open, above a random point (draws from ``np_random``); primes perception."""
         # Start above a random point in the workspace so the policy must search.
         ws = self.cfg.workspace
         start = np.array([
@@ -109,23 +119,10 @@ class PickLiftEnv(gym.Env):
         self.controller.move_to(start, tolerance=0.01, max_steps=80)
         self._target = self.controller.ee_position()
         self._steps = 0
-        return self._observe(), self._info()
 
     def step(self, action: np.ndarray):
-        action = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
-        if action.shape != (4,):
-            raise ValueError(f"action must have shape (4,), got {action.shape}")
+        self._apply_action(action)
         rl = self.cfg.rl
-
-        # Integrate on the commanded target, not the measured pose, so small
-        # actions are not swallowed by tracking error.
-        self._target = np.clip(self._target + action[:3] * rl.action_scale, self._ee_low, self._ee_high)
-        self._gripper_closed = bool(action[3] > 0)
-        self.controller.set_gripper(closed=self._gripper_closed)
-        self.controller.command_pose(self._target)
-        self.scene.step(self.cfg.sim.control_substeps)
-        self._steps += 1
-
         obs = self._observe()
         reward, success = self._reward()
         terminated = success
@@ -141,6 +138,20 @@ class PickLiftEnv(gym.Env):
         self.scene.close()
 
     # ------------------------------------------------------------- helpers
+    def _apply_action(self, action: np.ndarray) -> None:
+        """Validate, apply and simulate one control step."""
+        action = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
+        if action.shape != (4,):
+            raise ValueError(f"action must have shape (4,), got {action.shape}")
+        # Integrate on the commanded target, not the measured pose, so small
+        # actions are not swallowed by tracking error.
+        self._target = np.clip(self._target + action[:3] * self.cfg.rl.action_scale, self._ee_low, self._ee_high)
+        self._gripper_closed = bool(action[3] > 0)
+        self.controller.set_gripper(closed=self._gripper_closed)
+        self.controller.command_pose(self._target)
+        self.scene.step(self.cfg.sim.control_substeps)
+        self._steps += 1
+
     def render_frame(self, width: int = 480, height: int = 360) -> np.ndarray:
         return render_presentation(self.scene.client, width, height)
 
