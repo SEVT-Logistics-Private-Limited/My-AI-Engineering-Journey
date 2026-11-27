@@ -37,7 +37,7 @@
 
 ## Contents
 
-[Results](#results) · [How it works](#how-it-works) · [Engineering challenges](#engineering-challenges) · [Skills demonstrated](#skills-demonstrated) · [Key design decisions](#key-design-decisions) · [Quickstart](#quickstart) · [Testing and CI](#testing-and-ci) · [Project structure](#project-structure) · [Limitations and roadmap](#limitations-and-roadmap) · [Topics covered](#topics-covered-in-this-project) · [Resources](#resources)
+[Results](#results) · [Pick-and-place](#pick-and-place) · [How it works](#how-it-works) · [Engineering challenges](#engineering-challenges) · [Skills demonstrated](#skills-demonstrated) · [Key design decisions](#key-design-decisions) · [Quickstart](#quickstart) · [Testing and CI](#testing-and-ci) · [Project structure](#project-structure) · [Limitations and roadmap](#limitations-and-roadmap) · [Topics covered](#topics-covered-in-this-project) · [Resources](#resources)
 
 ## Results
 
@@ -101,6 +101,55 @@ Every episode is a pure function of its seed (see [Engineering challenges](#engi
 
 </details>
 
+## Pick-and-place
+
+The second task: pick the cube up, carry it, and put it back down on the floor at a goal spot (the green disc) at least 10 cm from where it was picked. It reuses the scene, camera, state estimator and controller. Pick-and-lift above is unchanged: its regression outputs (tests, baseline, both policy evaluations) were checked to be identical per episode after the change.
+
+<img src="assets/baseline_place.gif" width="420" alt="Classical Vision + IK baseline picking up the cube, carrying it to the green goal disc and setting it down">
+
+*Classical Vision + IK baseline. Real time, 24 fps.*
+
+### Success rule
+
+One implementation ([`task.py`](src/pickplace/task.py)) scores every controller. Each condition closes a shortcut a learning agent would otherwise take:
+
+| Condition | Default | Without it, the agent could |
+|---|---|---|
+| Lifted first | ≥ 5 cm while held (the pick-and-lift rule) | push or slide the cube to the goal |
+| Released low | cube bottom ≤ 2 cm above the floor when the fingers let go | throw or drop it |
+| Released | no finger contact for 3 control steps | hold it at the goal |
+| At rest and upright | speed < 1 cm/s, tilt < 15° from the nearest face | leave it rolling or tipped over |
+| On target | within 3 cm of the goal | put it anywhere |
+| Moved | ≥ 10 cm from the pick spot | put it back where it was |
+| In the workspace | inside the 25 × 40 cm spawn region (camera view, arm reach) | knock it out of view |
+
+Goals are random per episode, at least 13 cm (10 cm + 3 cm tolerance) from the pick spot and 3 cm inside the spawn region, so landing anywhere within tolerance satisfies the last two rows by construction (tested). A goal is drawn right after the cube's position from the same seeded generator, so the baseline and the policy get the same pick and place spots for each seed. `place.goal_mode: any` drops the goal tolerance and keeps only the 10 cm rule.
+
+### Results
+
+**Pending.** The pick-and-place policy is still training; results for every controller on the held-out test seeds (30000–30099) will be added together, after development is frozen, following the same protocol as pick-and-lift.
+
+### How the baseline places
+
+```mermaid
+flowchart LR
+    A["Camera<br/>locate the cube"] --> B["Pick<br/>grasp, lift"] --> C["Carry<br/>≤ 1 cm per step,<br/>grasp checked"] --> D["Place<br/>lower; release with the<br/>cube 5 mm above the floor"] --> E["Retreat<br/>straight up,<br/>then home"] --> F["Camera check<br/>where did it land?"]
+```
+
+The arm carries at lift height in steps of at most 1 cm per control tick (`move_to` jumps straight to its final target, fast enough to shake the cube loose), checks the grasp at every step, lowers to 12 cm and then until the cube bottom is 5 mm above the floor, opens, and retreats straight up so the fingers do not drag the cube. With the arm back home and out of view, one photo checks where the cube landed: the robot verifies its own result. Every stage reports why it failed: `place_unreachable`, `dropped_in_transit`, then the success-rule outcomes (`released_too_high`, `toppled`, `missed_goal`, and so on).
+
+### How the policy is trained
+
+| Aspect | Detail |
+|---|---|
+| **Environment** | `PickPlace-v0` ([`env_place.py`](src/pickplace/env_place.py)): same scene, camera, estimator and 4-D action as pick-and-lift |
+| **Observation (17)** | The pick-and-lift observation (10) · goal position (3) · goal − object (3) · a "lifted yet" flag (1), because success depends on history the current state does not show |
+| **Reward** | −0.1 per step · progress terms as potential differences γΦ(s′) − Φ(s): reach → grasp → lift, then carry → lower near the goal · +25 on success · −25, and the episode ends, if the cube is dropped from above 2 cm, topples or leaves the workspace |
+| **Curriculum** | Half the training episodes start with the cube already in hand (the scripted pick as the reset); evaluation always starts from scratch |
+| **Discount** | γ = 0.98: the task takes ~30–80 steps, and γ = 0.95 looks only about 20 ahead |
+
+Written as potential differences, no progress bonus can be collected twice: around any loop of states the shaping sums to (γ − 1)·ΣΦ ≤ 0, so hovering at the goal, lifting again and again, or putting the cube down and picking it up all lose reward, by construction. Each of these is a unit test, as are pushing (never lifted, never a success) and throwing (a terminal failure). One more trap is checked by config validation: with a terminal penalty smaller than a full episode of step penalties, failing on purpose to end the episode early would beat trying.
+
 ## How it works
 
 ```mermaid
@@ -113,7 +162,7 @@ flowchart LR
     ROB -. "joint encoders,<br/>gripper width" .-> EST
 ```
 
-The loop runs at 24 Hz. The classical baseline shares the perception and the controller but needs no state estimator: it takes one photo before the arm moves, while nothing hides the cube, then runs a fixed grasp sequence. Both are scored by the same success rule: the cube is held and lifted at least 5 cm.
+The loop runs at 24 Hz. The classical baseline shares the perception and the controller but needs no state estimator: it takes one photo before the arm moves, while nothing hides the cube, then runs a fixed grasp sequence. Both are scored by the same success rule: the cube is held and lifted at least 5 cm. For pick-and-place, the baseline continues with carry → place → camera check ([diagram](#how-the-baseline-places)).
 
 ### 1. Perception: computer vision
 
@@ -163,6 +212,7 @@ What broke during development, how each issue was diagnosed, and the measured ef
 | 3 | Estimate dragged 6 cm away during a failed grasp | **False attachment.** A corner pinch counted as a grasp. | Hold band from cube geometry, plus a finger-settle check | 98% → 100% on development seeds |
 | 4 | Same seed, different outcome | **Non-deterministic resets.** Bullet keeps solver and contact caches across resets; `saveState`/`restoreState` did not clear them (verified). Trajectories diverged by up to 6 cm. | Rebuild the physics world each episode (60 ms) | Bit-identical rollouts per seed |
 | 5 | Wrist reached only ~55% of the commanded rotation | The IK null-space rest pose pinned the wrist joint, and convergence checked position only | Bias the rest pose by the target yaw; check orientation too | Yaw error < 3° |
+| 6 | Pick-and-place: every cube landed ~18 mm off target, always on the gripper's closing axis | **Uncoupled fingers.** The URDF drives the two fingers with independent motors; holding the cube, both saturate at equal force, so nothing keeps the pair centred and the cube drifted up to 2 cm while carried. Re-aiming the hand from finger kinematics helped (to ~7 mm) but a second correction near the floor dragged the cube (12 mm). | Couple the fingers with a gear constraint, as on the real Franka Hand; pick-and-place only, so pick-and-lift results stay bit-identical | 18 mm → 3 mm mean goal error, 100% placement on development seeds |
 
 Complexity was added only where measurements justified it. One estimator rule never fired in 100 development episodes, so it was removed.
 
@@ -172,7 +222,7 @@ Complexity was added only where measurements justified it. One estimator rule ne
 |---|---|
 | **Computer vision** | RGB-D perception · HSV segmentation and contour analysis (OpenCV) · pinhole camera model with explicit intrinsics and extrinsics · depth-based 3D deprojection · perspective-bias correction · orientation estimation |
 | **State estimation** | Fusing vision with proprioception (forward kinematics, gripper width) · occlusion handling · grasp detection from finger geometry |
-| **Robot learning** | Gymnasium environment design · reward shaping and diagnosing reward hacking · SAC with Stable-Baselines3 · validation-based checkpoint selection · held-out and out-of-distribution evaluation |
+| **Robot learning** | Gymnasium environment design · reward shaping and diagnosing reward hacking · potential-based shaping and curriculum learning · SAC with Stable-Baselines3 · validation-based checkpoint selection · held-out and out-of-distribution evaluation |
 | **Robotics** | Franka Panda in PyBullet · damped-least-squares inverse kinematics with null-space control · Cartesian control · top-down grasp planning |
 | **ML engineering** | Seed-deterministic simulation · experiment protocol with data splits · pytest · GitHub Actions with model regression gates · typed, validated YAML config |
 
@@ -186,6 +236,9 @@ Complexity was added only where measurements justified it. One estimator rule ne
 | **Reward computed from true state** | The reward is a training signal, not an input, so it should not inherit perception noise. |
 | **Fresh physics world every episode** | Results depend only on the seed, never on episode order. |
 | **Validated configuration** | Unknown or missing keys, and reward settings that allow hovering, fail at load time. |
+| **One success rule per task, shared by every controller** | `task.py` scores the scripted baseline and the RL policy identically, and has no simulator inside, so every failure case has its own unit test. |
+| **Potential-based progress rewards for pick-and-place** | A bonus written as γΦ(s′) − Φ(s) sums to at most zero around any loop, which removes hovering, re-lifting and put-down-pick-up hacks by construction rather than by patching each one. |
+| **Additive extension** | Pick-and-place reuses the scene, camera, estimator and controller, and the pick-and-lift regression outputs (tests, baseline, both policy evaluations) were checked to be identical per episode after the change. |
 
 ## Quickstart
 
@@ -207,10 +260,21 @@ python scripts/evaluate.py --controller rl --obs-source perception   # ... actin
 python scripts/train_rl.py                           # retrain from scratch (~18 min on 4 CPU cores)
 python scripts/plot_training.py --run runs/<name>    # training curve → assets/
 python scripts/plot_perception.py                    # perception figure → assets/
-pytest -q                                            # 47 tests, ~10 s
+pytest -q                                            # 116 tests, ~20 s
 ```
 
-Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer; `--video out.gif` or `--video out.mp4` on `evaluate.py` records the episodes; `--min-success 0.9` makes `evaluate.py` fail below a success rate.
+Pick-and-place uses the same scripts with `--task place`:
+
+```bash
+python scripts/run_baseline.py --task place --episodes 20                        # Vision + IK pick-and-place
+python scripts/evaluate.py --task place --controller baseline --episodes 100      # test seeds, failure breakdown
+python scripts/evaluate.py --task place --controller rl --obs-source perception   # trained policy on camera input
+python scripts/evaluate.py --task place --controller rl --edge-goals --random-yaw # out-of-distribution checks
+python scripts/train_rl.py --task place                                           # retrain (curriculum, γ = 0.98)
+python scripts/plot_training.py --run runs/<name> --task place                    # training_curve_place → assets/
+```
+
+Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer (with `--task place` too); `--video out.gif` or `--video out.mp4` on `evaluate.py` records the episodes; `--min-success 0.9` makes `evaluate.py` fail below a success rate.
 
 **Verified from a clean install (November 2026)** on a 4-core CPU with Python 3.13, PyTorch 2.15 (CPU), Stable-Baselines3 2.9.2, Gymnasium 1.4.0 and PyBullet 3.2.7 built from source:
 
@@ -221,8 +285,8 @@ Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer; `--video o
 
 ## Testing and CI
 
-- **47 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipeline, the Gymnasium environment, determinism, video and figures.
-- **GitHub Actions** on Python 3.10 and 3.12, for every change to this project: the full test suite, a baseline smoke run, and **regression gates on the committed policy** (at least 90% success with ground truth and 80% with the camera), so a change that breaks the trained model fails CI.
+- **116 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipelines, both Gymnasium environments, determinism, video and figures. For pick-and-place: one test per placement outcome on hand-built states, goal sampling, solvability through the action API, and one test per reward hack (hovering at the goal, pushing, throwing, re-lifting, putting down and picking up again).
+- **GitHub Actions** on Python 3.10 and 3.12, for every change to this project: the full test suite, a baseline smoke run, a **pick-and-place baseline gate** (at least 90% on 10 episodes), and **regression gates on the committed policy** (at least 90% success with ground truth and 80% with the camera), so a change that breaks the trained model fails CI.
 
 ## Project structure
 
@@ -233,8 +297,10 @@ vision-rl-pickplace/
 │   ├── camera.py              RGB-D camera with explicit intrinsics/extrinsics
 │   ├── perception.py          Segmentation, 3D deprojection, yaw, state estimator
 │   ├── kinematics.py          Inverse kinematics and Cartesian control
-│   ├── pipeline.py            Classical Vision → IK → grasp baseline
+│   ├── pipeline.py            Classical baselines: Vision → IK → grasp (→ carry → place → camera check)
+│   ├── task.py                Pick-and-place goal sampler and success rule (pure, shared)
 │   ├── env.py                 Gymnasium environment (PickLift-v0)
+│   ├── env_place.py           Gymnasium environment (PickPlace-v0)
 │   ├── sim.py                 PyBullet scene with deterministic resets
 │   ├── config.py              Typed, validated configuration
 │   ├── video.py               GIF / MP4 writer
@@ -242,13 +308,13 @@ vision-rl-pickplace/
 ├── scripts/
 │   ├── detect_object.py       Perception demo and accuracy check
 │   ├── run_baseline.py        Classical pipeline benchmark
-│   ├── train_rl.py            SAC training (PPO also supported)
+│   ├── train_rl.py            SAC training (PPO also supported); --task lift | place
 │   ├── evaluate.py            Evaluation, video recording, CI gate
 │   ├── plot_training.py       Training-curve chart and CSV
 │   ├── plot_perception.py     Perception figure
 │   └── viz_theme.py           Shared figure colours
 ├── models/sac_picklift.zip    Trained policy (best validation checkpoint)
-├── tests/                     47 tests
+├── tests/                     116 tests
 └── assets/                    Demo GIFs, perception figure, training curve
 ```
 
@@ -261,6 +327,8 @@ vision-rl-pickplace/
 - **Rare policy stall.** In the ground-truth test failure (seed 30023), the policy held a tilted cube but hovered instead of lifting it.
 - **No wrist rotation in the policy.** Rotated cubes still succeed because the 8 cm gripper opening exceeds the cube's 5.7 cm diagonal; elongated objects would need a yaw action.
 - **Simulation only.** No domain randomisation yet, so sim-to-real transfer is untested. Determinism holds per PyBullet build.
+- **Pick-and-place is checked only once the arm is out of view.** The baseline's camera check runs with the arm back home; a cube that bounces or tips while the hand hides it is the same hidden-displacement case as above. With camera input, the RL policy's arm is still above the cube right after release, so its estimate relies on the "released cubes rest where they were let go" assumption.
+- **The goal is a point, not a region,** and there is a single object; placing next to or on top of other objects is not modelled.
 
 **Roadmap**
 
@@ -268,7 +336,7 @@ vision-rl-pickplace/
 2. Learned detection or instance segmentation, then point-cloud grasp poses for cluttered scenes.
 3. A wrist camera or second viewpoint, to recover from hidden displacement.
 4. Visual RL from pixels (an image encoder with augmentation, e.g. DrQ) to learn perception end to end.
-5. Extend pick-and-lift to full pick-and-place (carry the cube to a goal position), with goal-conditioned policies and Hindsight Experience Replay.
+5. ~~Extend pick-and-lift to full pick-and-place (carry the cube to a goal position)~~ **Done:** see [Pick-and-place](#pick-and-place). Still open: Hindsight Experience Replay, which needs a dictionary observation and a reward that can be recomputed for any goal; the "was lifted" condition does not fit that format cleanly.
 
 ## Topics covered in this project
 
