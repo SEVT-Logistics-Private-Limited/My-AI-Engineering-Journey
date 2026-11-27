@@ -1,7 +1,8 @@
-"""Phase 2 milestone: classical Vision + IK pick-and-lift, no learning.
+"""Classical Vision + IK baseline, no learning: pick-and-lift or pick-and-place.
 
-    python scripts/run_baseline.py --episodes 50          # headless benchmark
-    python scripts/run_baseline.py --episodes 3 --gui     # watch it in the PyBullet window
+    python scripts/run_baseline.py --episodes 50                  # pick-and-lift, headless benchmark
+    python scripts/run_baseline.py --episodes 3 --gui             # watch it in the PyBullet window
+    python scripts/run_baseline.py --task place --episodes 50     # pick-and-place
 """
 
 from __future__ import annotations
@@ -14,12 +15,14 @@ import numpy as np
 
 from pickplace.camera import RGBDCamera
 from pickplace.config import load_config
-from pickplace.pipeline import PickPipeline
+from pickplace.pipeline import PickPipeline, PickPlacePipeline
 from pickplace.sim import Scene
+from pickplace.task import sample_place_goal
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--task", choices=("lift", "place"), default="lift")
     parser.add_argument("--config", default=None)
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--seed", type=int, default=0)
@@ -29,15 +32,25 @@ def main() -> None:
     cfg = load_config(args.config)
     rng = np.random.default_rng(args.seed)
     outcomes: collections.Counter[str] = collections.Counter()
-    with Scene(cfg, gui=args.gui) as scene:
+    place = args.task == "place"
+    with Scene(cfg, gui=args.gui, coupled_fingers=place) as scene:
         camera = RGBDCamera(cfg.camera, scene.client)
         on_step = (lambda: time.sleep(cfg.sim.time_step * cfg.sim.control_substeps)) if args.gui else None
-        pipeline = PickPipeline(scene, camera, on_step=on_step)
+        pipeline = (PickPlacePipeline if place else PickPipeline)(scene, camera, on_step=on_step)
         start = time.time()
         for ep in range(args.episodes):
             scene.reset()
-            scene.randomize_object(rng)
+            state = scene.randomize_object(rng)
+            if place:
+                goal = sample_place_goal(rng, state.position[:2], cfg)
+                scene.add_goal_marker(goal)
             scene.step(20)
+            if place:
+                r = pipeline.run(goal)
+                outcomes[r.outcome.value] += 1
+                print(f"episode {ep:3d}: {r.outcome.value:<18} goal_err={1000 * r.distance_to_goal:6.1f} mm  "
+                      f"moved={100 * r.distance_moved:5.1f} cm")
+                continue
             result = pipeline.run()
             outcomes[result.outcome.value] += 1
             est = "-" if result.detection is None else np.array2string(result.detection.position, precision=3)
