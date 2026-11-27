@@ -100,7 +100,8 @@ place:
   max_tilt: 0.26                # 15 degrees, to the nearest face-up orientation
   rest_speed: 0.01              # m/s
   release_steps: 3              # control steps with no finger contact
-  edge_band: 0.05               # out-of-distribution test: goals this close to the goal-region edge
+  edge_band: 0.02               # out-of-distribution test: goals this close to the goal-region edge
+                                # (at 0.05, two thirds of all goals already qualified)
   hover_height: 0.12            # baseline: hand height above the floor before the final descent
   place_z_offset: 0.005         # baseline: let go with the cube bottom 5 mm above the floor
   carry_step: 0.01              # baseline: max hand movement per control step while carrying
