@@ -17,7 +17,7 @@ Rishi Sasanala · [Email](mailto:rishisasanala@gmail.com)
 This repository is my AI engineering portfolio. Both projects are my own work: I designed, built and tested both, and deployed Yodha to production.
 
 - **[Yodha](#yodha-telugu-voice-ai-assistant)**, a Telugu voice assistant that answers vehicle questions from the manuals, is in production on Azure. Its application and model-training code live in a [separate repository](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson); the write-up is here.
-- **[Vision-RL Pick-and-Lift](#vision-rl-pick-and-lift)**, a robot-learning prototype in simulation, lives entirely in this repository: code, trained model, tests and CI.
+- **[Vision-RL Pick-and-Place](#vision-rl-pick-and-place)**, a robot-learning prototype in simulation, lives entirely in this repository: code, trained model, tests and CI.
 - **[34 engineering notes](#engineering-notes)** explain the concepts the projects rely on, from GPUs to RAG. Each ends with where the concept appears in the code.
 
 ## Featured projects
@@ -41,32 +41,33 @@ flowchart LR
 
 [Project write-up](projects/telugu-voice-assistant/README.md) · [Live assistant](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/assistant) (sign-in required) · [API specification](https://telugu-voice-app.gentletree-f4002f64.southindia.azurecontainerapps.io/openapi.json) · [Implementation & Source Code → Tiny LLM on NVIDIA Jetson](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson)
 
-### Vision-RL Pick-and-Lift
+### Vision-RL Pick-and-Place
 
 [![CI](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml/badge.svg?branch=main)](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml)
 
-**A simulated robot arm finds a cube with a depth camera, picks it up using a control policy learned by reinforcement learning in about 18 minutes on a 4-core CPU, then carries it to a goal spot and sets it down.** Research prototype: simulation only, not yet tested on a physical robot.
+**A simulated robot arm finds a cube on the floor with a depth camera, picks it up using a control policy learned by reinforcement learning in about 18 minutes on a 4-core CPU, and sets it back down at a different spot on the floor.** Research prototype: simulation only, not yet tested on a physical robot.
 
-<img src="projects/vision-rl-pickplace/assets/hybrid_place.gif" width="480" alt="Simulated robot arm finding a red cube with its camera, picking it up with a learned policy and setting it down on a green goal spot">
+<img src="projects/vision-rl-pickplace/assets/hybrid_place.gif" width="480" alt="Simulated robot arm finding a red cube with its camera, picking it up with a learned policy and setting it down on a green goal spot elsewhere on the floor">
 
 ```mermaid
 flowchart LR
-    A["Depth<br/>camera"] --> B["Computer vision<br/>locates the cube"] --> C["State estimator<br/>tracks it when hidden"] --> D["Learned policy<br/>picks the next move"] --> E["Robot arm<br/>picks and places the cube"]
+    A["Depth<br/>camera"] --> B["Computer vision<br/>locates the cube"] --> C["State estimator<br/>tracks it when hidden"] --> D["Learned policy<br/>picks it up"] --> E["Carry and place<br/>sets it down at the goal"] --> F["Camera<br/>checks where it landed"]
 ```
 
-Results on 100 held-out test episodes. Success means the cube is held and lifted at least 5 cm:
+Results on 100 held-out test episodes, each with a random start spot and a goal spot at least 13 cm away. Success means the cube was picked up, carried and set down upright within 3 cm of the goal:
 
 | Controller | Success |
 |---|---|
-| Learned policy, acting on the camera | **99%** |
-| Learned policy, cube rotated up to ±45°, never seen in training (cube position from the simulator) | **100%** |
-| Hand-written baseline, no learning | **100%** |
+| Learned pick + scripted carry and place, acting on the camera | **100%** (4.4 mm mean placement error) |
+| Hand-written baseline, no learning | **100%** (3.2 mm) |
+| The learned pick on its own, acting on the camera | **99%** |
+| The learned pick on its own, cube rotated up to ±45°, never seen in training (cube position from the simulator) | **100%** |
 
 - **Perception:** 1.8 mm mean 3D localisation error over 100 placements.
-- **About the baseline:** a hand-written controller also solves every test case, which shows the task is solvable. The learned policy matches it within one episode while learning the behaviour from rewards alone.
-- **Engineering:** diagnosed and fixed reward hacking · a camera-plus-joint-sensor state estimator raised camera-driven success from 21% to 98% on development seeds · physics rebuilt each episode for bit-identical runs · 122 tests in CI, plus regression gates on the trained policy.
-- **Pick-and-place:** the arm also carries the cube to a random goal spot and sets it down: 100% on 100 held-out tests from the camera, 4.4 mm mean placement error (learned pick + scripted place; an end-to-end learned policy is not solved yet).
-- **Reproducible:** from a clean install, every success rate above reproduces exactly, and retraining from scratch produces a policy bit-identical to the committed one (re-checked November 2026).
+- **About the baseline:** a hand-written controller also solves every test case, which shows the task is solvable. The learned pick matches it within one episode while learning the behaviour from rewards alone.
+- **Engineering:** diagnosed and fixed reward hacking · a camera-plus-joint-sensor state estimator raised camera-driven success from 21% to 98% on development seeds · found and fixed an 18 mm placement bias in the simulated gripper · physics rebuilt each episode for bit-identical runs · 122 tests in CI, plus regression gates on the trained policy and the full pick-and-place pipeline.
+- **Open problem:** a single policy for the whole task, learned end to end, did not converge in three CPU training runs; the write-up covers what was tried and what to try next.
+- **Reproducible:** every episode is a pure function of its seed; from a clean install, every success rate of the learned pick reproduced exactly, and retraining produced a bit-identical policy (re-checked November 2026).
 
 [Project write-up](projects/vision-rl-pickplace/README.md) · [Results](projects/vision-rl-pickplace/README.md#results) · [Engineering challenges](projects/vision-rl-pickplace/README.md#engineering-challenges) · [Quickstart](projects/vision-rl-pickplace/README.md#quickstart) · [Source code](projects/vision-rl-pickplace)
 
@@ -101,7 +102,7 @@ Results on 100 held-out test episodes. Success means the cube is held and lifted
 
 | Status | Work |
 |---|---|
-| **Done** | Yodha v10.1 in production · Vision-RL Pick-and-Lift prototype with reproducible results · 34 engineering notes |
+| **Done** | Yodha v10.1 in production · Vision-RL Pick-and-Place prototype with reproducible results · 34 engineering notes |
 | **In progress** | Compressing a 3B model to run Yodha offline: Telugu LoRA fine-tune and ternary quantisation ([code](https://github.com/SEVT-Logistics-Private-Limited/tiny-llm-jetson/tree/main/compression)) |
 | **Next** | Retrieval evaluation set for Yodha · Yodha running offline on a Jetson Orin Nano · domain randomisation, the first step from simulation toward a real robot arm |
 
