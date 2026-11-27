@@ -188,7 +188,7 @@ class PickPlacePipeline(PickPipeline):
             reached = ctl.move_linear(target, yaw, on_step=track, should_abort=grasp_lost)
             if grasp_lost():
                 result.outcome = Outcome.DROPPED_IN_TRANSIT
-                return self._score(result, tracker, was_lifted=True)
+                return self._score(result, tracker)
             if not reached:
                 result.outcome = Outcome.PLACE_UNREACHABLE
                 return result
@@ -200,15 +200,15 @@ class PickPlacePipeline(PickPipeline):
         for _ in range(pl.settle_steps):
             scene.step(cfg.sim.control_substeps)
             track()
-        self._score(result, tracker, was_lifted=True)
+        self._score(result, tracker)
         self._camera_check(result)
         return result
 
-    def _score(self, result: PickPlaceResult, tracker: ReleaseTracker, was_lifted: bool) -> PickPlaceResult:
+    def _score(self, result: PickPlaceResult, tracker: ReleaseTracker) -> PickPlaceResult:
         scene = self.scene
         obj = scene.object_state()
         state = PlacementState(
-            was_lifted=was_lifted,
+            was_lifted=True,              # place() runs only after a successful pick()
             release_height=tracker.release_height,
             steps_without_contact=tracker.steps_without_contact,
             object_position=obj.position,

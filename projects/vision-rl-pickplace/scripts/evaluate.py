@@ -170,7 +170,7 @@ def evaluate_place_baseline(cfg, episodes: int, seed: int, video: str | None, ed
             scene.step(20)
             r = pipeline.run(goal)
             info = {"distance_to_goal": r.distance_to_goal, "distance_moved": r.distance_moved,
-                    "tilt": r.tilt, "camera_error": r.camera_error}
+                    "tilt": r.tilt, "camera_error": r.camera_error, "camera_goal_error": r.camera_goal_error}
             records.append(_place_record(ep, r.outcome.value, info, time.time() - t0))
         if video:
             rec.save(video, fps=24)
@@ -197,7 +197,8 @@ def summarize_place(records: list[dict]) -> None:
     print(f"  distance moved        {stat('distance_moved', 100, 'cm', rows)}")
     print(f"  tilt                  {stat('tilt', float(np.rad2deg(1)), 'deg', rows)}")
     if any(np.isfinite(r.get("camera_error", np.nan)) for r in rows):
-        print(f"  camera check error    {stat('camera_error', 1000, 'mm', rows)}")
+        print(f"  camera vs true        {stat('camera_error', 1000, 'mm', rows)}")
+        print(f"  camera vs goal        {stat('camera_goal_error', 1000, 'mm', rows)}")
     print(f"  time per episode      {stat('seconds', 1, 's', records)}")
 
 
