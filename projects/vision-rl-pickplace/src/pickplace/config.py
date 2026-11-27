@@ -141,6 +141,7 @@ class PlaceRewardConfig:
 @dataclass(frozen=True)
 class CurriculumConfig:
     start_grasped_prob: float
+    start_above_goal_prob: float
 
 
 @dataclass(frozen=True)
@@ -274,7 +275,10 @@ def _validate_place(cfg: Config, check) -> None:
     w = rl.reward
     check(rl.max_episode_steps >= 1 and rl.total_timesteps >= 1, "place.rl step counts must be positive")
     check(0 < rl.gamma < 1, "place.rl.gamma must be in (0, 1)")
-    check(0 <= rl.curriculum.start_grasped_prob <= 1, "place.rl.curriculum.start_grasped_prob must be in [0, 1]")
+    cur = rl.curriculum
+    check(min(cur.start_grasped_prob, cur.start_above_goal_prob) >= 0
+          and cur.start_grasped_prob + cur.start_above_goal_prob <= 1,
+          "place.rl.curriculum start probabilities must be non-negative and sum to at most 1")
     check(w.shaping in ("dense", "potential"), "place.rl.reward.shaping must be dense or potential")
     check(min(w.reach_weight, w.grasp_bonus, w.lift_weight, w.goal_weight, w.lower_weight,
               w.success_bonus, w.fail_penalty) >= 0, "place.rl.reward weights must be non-negative")

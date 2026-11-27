@@ -66,8 +66,9 @@ class PickPlaceEnv(PickLiftEnv):
                  render_mode: str | None = None, gui: bool = False, curriculum: bool = False,
                  edge_goals: bool = False, object_yaw_range: list[float] | None = None):
         """
-        curriculum        training only: start ``place.rl.curriculum.start_grasped_prob`` of
-                          episodes with the cube already picked (scripted ``pick()``)
+        curriculum        training only: start some episodes with the cube already picked by the
+                          scripted ``pick()``, held above the pick spot or just above the goal
+                          (``place.rl.curriculum``)
         edge_goals        out-of-distribution test: goals near the edge of the goal region
         object_yaw_range  override ``rl.object_yaw_range`` (out-of-distribution test)
         """
@@ -109,8 +110,11 @@ class PickPlaceEnv(PickLiftEnv):
 
         self._release.reset()
         self._lifted = self._lifted_obs = False
-        start_grasped = self.curriculum and self.np_random.random() < self.cfg.place.rl.curriculum.start_grasped_prob
-        if start_grasped:
+        cur = self.cfg.place.rl.curriculum
+        u = self.np_random.random() if self.curriculum else 1.0
+        if u < cur.start_above_goal_prob:
+            self._reset_grasped(above_goal=True)
+        elif u < cur.start_above_goal_prob + cur.start_grasped_prob:
             self._reset_grasped()
         else:
             self._reset_arm()
@@ -138,13 +142,24 @@ class PickPlaceEnv(PickLiftEnv):
         return obs, float(reward), terminated, truncated, self._place_info()
 
     # ------------------------------------------------------------- helpers
-    def _reset_grasped(self) -> None:
-        """Curriculum start: the scripted baseline picks the cube and holds it at lift height."""
+    def _reset_grasped(self, above_goal: bool = False) -> None:
+        """Curriculum start: the scripted baseline picks the cube and holds it at lift height.
+
+        With ``above_goal`` the hand then carries it to just above the goal (within
+        the goal tolerance in xy, cube bottom 3-13 cm above the floor), so the policy
+        meets the lowering, the release and the success reward early.
+        """
         self.estimator.reset()
         self._object_estimate = self._object_prior.copy()
         result = self._picker.pick()
         self._gripper_closed = result.success
         self.controller.set_gripper(closed=self._gripper_closed)
+        if result.success:
+            self._update_task_state()            # latch "lifted" before lowering towards the goal
+        if result.success and above_goal:
+            offset = self.np_random.uniform(-1.0, 1.0, size=2) * self.cfg.place.goal_tolerance
+            hand_z = self.cfg.object.size / 2 + self.np_random.uniform(0.03, 0.13)
+            self.controller.move_linear(np.r_[self._goal[:2] + offset, hand_z])
         self._target = self.controller.ee_position()
         self._steps = 0
 

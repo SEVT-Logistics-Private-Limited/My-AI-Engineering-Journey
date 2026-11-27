@@ -145,7 +145,7 @@ The arm carries at lift height in steps of at most 1 cm per control tick (`move_
 | **Environment** | `PickPlace-v0` ([`env_place.py`](src/pickplace/env_place.py)): same scene, camera, estimator and 4-D action as pick-and-lift |
 | **Observation (17)** | The pick-and-lift observation (10) · goal position (3) · goal − object (3) · a "lifted yet" flag (1), because success depends on history the current state does not show |
 | **Reward** | A staged potential Φ ≥ 0 rises through reach → grasp → lift, then carry → lower near the goal; every step pays −0.1 − (Φ_max − Φ) · +25 on success · −60, and the episode ends, if the cube is dropped from above 2 cm, topples or leaves the workspace |
-| **Curriculum** | Half the training episodes start with the cube already in hand (the scripted pick as the reset); evaluation always starts from scratch |
+| **Curriculum** | Half the training episodes start with the cube already in hand (the scripted pick as the reset): a quarter above the pick spot, a quarter just above the goal (reverse curriculum, so the release and its reward are met early). Evaluation always starts from scratch |
 | **Discount** | γ = 0.98: the task takes ~30–80 steps, and γ = 0.95 looks only about 20 ahead |
 
 Every step costs at least 0.1, so hovering at the goal never pays, and once the cube is lifted Φ ignores the grasp and the lift height, so lifting again and again or putting the cube down and picking it up again earns nothing. Each of these is a unit test, as are pushing (never lifted, never a success) and throwing (a terminal failure). Before the lift, the reward is pick-and-lift's reward up to a constant. One more trap is checked by config validation: the fail penalty must exceed the discounted cost of never succeeding from a lifted state, or dropping the cube to end the episode early would beat trying.
@@ -261,7 +261,7 @@ python scripts/evaluate.py --controller rl --obs-source perception   # ... actin
 python scripts/train_rl.py                           # retrain from scratch (~18 min on 4 CPU cores)
 python scripts/plot_training.py --run runs/<name>    # training curve → assets/
 python scripts/plot_perception.py                    # perception figure → assets/
-pytest -q                                            # 120 tests, ~20 s
+pytest -q                                            # 122 tests, ~20 s
 ```
 
 Pick-and-place uses the same scripts with `--task place`:
@@ -286,7 +286,7 @@ Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer (with `--ta
 
 ## Testing and CI
 
-- **120 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipelines, both Gymnasium environments, determinism, video and figures. For pick-and-place: one test per placement outcome on hand-built states, goal sampling, solvability through the action API, and one test per reward hack (hovering at the goal, pushing, throwing, re-lifting, putting down and picking up again).
+- **122 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipelines, both Gymnasium environments, determinism, video and figures. For pick-and-place: one test per placement outcome on hand-built states, goal sampling, solvability through the action API, and one test per reward hack (hovering at the goal, pushing, throwing, re-lifting, putting down and picking up again).
 - **GitHub Actions** on Python 3.10 and 3.12, for every change to this project: the full test suite, a baseline smoke run, a **pick-and-place baseline gate** (at least 90% on 10 episodes), and **regression gates on the committed policy** (at least 90% success with ground truth and 80% with the camera), so a change that breaks the trained model fails CI.
 
 ## Project structure
@@ -316,7 +316,7 @@ vision-rl-pickplace/
 │   ├── plot_perception.py     Perception figure
 │   └── viz_theme.py           Shared figure colours
 ├── models/sac_picklift.zip    Trained policy (best validation checkpoint)
-├── tests/                     120 tests
+├── tests/                     122 tests
 └── assets/                    Demo GIFs, perception figure, training curve
 ```
 

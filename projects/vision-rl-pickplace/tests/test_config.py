@@ -107,3 +107,10 @@ def test_missing_place_section_rejected(tmp_path):
     path = _write(tmp_path, lambda d: d.pop("place"))
     with pytest.raises(ConfigError, match="missing keys"):
         load_config(path)
+
+
+def test_curriculum_probabilities_must_sum_to_at_most_one(tmp_path):
+    path = _write(tmp_path, lambda d: d["place"]["rl"]["curriculum"].update(start_grasped_prob=0.6,
+                                                                             start_above_goal_prob=0.6))
+    with pytest.raises(ConfigError, match="curriculum"):
+        load_config(path)

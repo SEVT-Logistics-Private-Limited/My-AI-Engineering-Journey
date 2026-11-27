@@ -123,7 +123,7 @@ place:
       lift_weight: 10.0         # per metre of lift, capped at task.success_lift; as in pick-and-lift
       goal_weight: 1.0          # per metre, cube to goal (after lifted)
       lower_weight: 2.5         # per metre of cube height near the goal (after lifted)
-      lower_radius: 0.05        # the lowering term fades in within this distance of the goal
+      lower_radius: 0.15        # the lowering term fades in within this distance of the goal
       distance_ref: 0.5         # distances are measured against this (keeps phi >= 0)
       lower_ref: 0.2            # cube heights above this earn nothing
       success_bonus: 25.0
@@ -131,4 +131,8 @@ place:
       # the cube to end the episode beats trying (enforced by config validation).
       fail_penalty: 60.0
     curriculum:
-      start_grasped_prob: 0.5   # training only: start this share of episodes holding the cube
+      # Training only; evaluation always starts from scratch. The rest start from scratch.
+      start_grasped_prob: 0.25      # holding the cube at lift height above the pick spot
+      # Reverse curriculum: holding the cube just above the goal, so the release and its
+      # reward are met early. Without it, a run never released at the goal once in 75k steps.
+      start_above_goal_prob: 0.25

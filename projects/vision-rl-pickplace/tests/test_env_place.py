@@ -1,3 +1,5 @@
+import dataclasses
+
 import gymnasium as gym
 import numpy as np
 import pytest
@@ -95,6 +97,22 @@ def test_task_is_solvable(cfg, obs_source, curriculum, seeds):
             assert info["is_success"] and terminated, (obs_source, seed, info["outcome"])
             assert info["distance_moved"] >= cfg.place.min_distance
             assert rewards[-1] > cfg.place.rl.reward.success_bonus / 2
+    finally:
+        e.close()
+
+
+def test_reverse_curriculum_starts_holding_the_cube_above_the_goal(cfg):
+    cur = dataclasses.replace(cfg.place.rl.curriculum, start_grasped_prob=0.0, start_above_goal_prob=1.0)
+    c = cfg.replace(place=dataclasses.replace(cfg.place, rl=dataclasses.replace(cfg.place.rl, curriculum=cur)))
+    e = PickPlaceEnv(c, curriculum=True)
+    try:
+        obs, info = e.reset(seed=7)
+        assert info["lifted"] and info["grasped"] and obs[16] == 1.0
+        assert info["distance_to_goal"] < 2 * cfg.place.goal_tolerance
+        bottom = info["object_position"][2] - cfg.object.size / 2
+        assert cfg.place.max_release_height < bottom < 0.15     # must lower before letting go
+        rewards, terminated, info = run_episode(e, ScriptedPlacer(), seed=7)
+        assert info["is_success"] and terminated
     finally:
         e.close()
 
