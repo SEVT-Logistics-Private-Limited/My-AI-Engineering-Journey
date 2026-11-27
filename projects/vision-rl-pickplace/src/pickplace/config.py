@@ -14,6 +14,8 @@ from typing import Any, get_type_hints
 import numpy as np
 import yaml
 
+from .rewards import place_failure_threshold
+
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "default.yaml"
 
 
@@ -122,6 +124,7 @@ class RLConfig:
 
 @dataclass(frozen=True)
 class PlaceRewardConfig:
+    shaping: str
     step_penalty: float
     reach_weight: float
     grasp_bonus: float
@@ -129,6 +132,8 @@ class PlaceRewardConfig:
     goal_weight: float
     lower_weight: float
     lower_radius: float
+    distance_ref: float
+    lower_ref: float
     success_bonus: float
     fail_penalty: float
 
@@ -270,18 +275,23 @@ def _validate_place(cfg: Config, check) -> None:
     check(rl.max_episode_steps >= 1 and rl.total_timesteps >= 1, "place.rl step counts must be positive")
     check(0 < rl.gamma < 1, "place.rl.gamma must be in (0, 1)")
     check(0 <= rl.curriculum.start_grasped_prob <= 1, "place.rl.curriculum.start_grasped_prob must be in [0, 1]")
+    check(w.shaping in ("dense", "potential"), "place.rl.reward.shaping must be dense or potential")
     check(min(w.reach_weight, w.grasp_bonus, w.lift_weight, w.goal_weight, w.lower_weight,
               w.success_bonus, w.fail_penalty) >= 0, "place.rl.reward weights must be non-negative")
-    check(w.lower_radius > 0, "place.rl.reward.lower_radius must be positive")
-    # Same rule as pick-and-lift. Shaping is gamma*phi(s') - phi(s) with phi >= 0, so the
-    # largest per-step bonus for standing still is (gamma - 1) * phi <= 0: any positive
-    # step penalty keeps hovering strictly worse than finishing.
+    check(min(w.lower_radius, w.distance_ref, w.lower_ref) > 0,
+          "place.rl.reward.lower_radius, distance_ref and lower_ref must be positive")
+    # Same rule as pick-and-lift: standing still must cost reward. Dense: every step pays
+    # -step_penalty - (phi_max - phi) <= -step_penalty. Potential: standing still pays
+    # -step_penalty + (gamma - 1) * phi <= -step_penalty, since phi >= 0.
     check(w.step_penalty > 0,
           "place.rl.reward.step_penalty must be positive; otherwise the agent learns to hover instead of finishing")
+    # Terminal failures (dropped, toppled, left the workspace) need a lifted cube. From any
+    # lifted state, failing must cost more than never succeeding, discounted.
+    threshold = place_failure_threshold(w, rl.gamma, cfg.task.success_lift)
     check(
-        w.fail_penalty > w.step_penalty * rl.max_episode_steps,
-        f"place.rl.reward.fail_penalty ({w.fail_penalty}) must exceed step_penalty * max_episode_steps "
-        f"({w.step_penalty * rl.max_episode_steps:.1f}); otherwise ending the episode by failing beats trying",
+        w.fail_penalty > threshold,
+        f"place.rl.reward.fail_penalty ({w.fail_penalty}) must exceed {threshold:.1f}, the discounted cost "
+        f"of never succeeding from a lifted state; otherwise ending the episode by failing beats trying",
     )
 
 

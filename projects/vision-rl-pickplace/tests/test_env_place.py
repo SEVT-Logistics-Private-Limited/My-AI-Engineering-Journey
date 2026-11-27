@@ -3,7 +3,8 @@ import numpy as np
 import pytest
 from gymnasium.utils.env_checker import check_env
 
-from pickplace.env_place import OBS_DIM, PickPlaceEnv, place_potential, register
+from pickplace.env_place import OBS_DIM, PickPlaceEnv, register
+from pickplace.rewards import place_potential, place_potential_max, place_step_reward
 
 
 class ScriptedPlacer:
@@ -140,8 +141,41 @@ def _potential(cfg, **state):
     return place_potential(cfg.place.rl.reward, cfg.task.success_lift, **state)
 
 
+def _random_states(rng, n):
+    return [dict(lifted=bool(rng.random() < 0.5), grasped=bool(rng.random() < 0.5),
+                 reach_dist=rng.uniform(0, 0.6), lift=rng.uniform(0, 0.2),
+                 goal_dist=rng.uniform(0, 0.6), bottom_height=rng.uniform(0, 0.25)) for _ in range(n)]
+
+
+def test_dense_reward_never_pays_for_standing_still_or_looping(cfg):
+    """Dense (default): every step costs at least step_penalty, whatever the state."""
+    w = cfg.place.rl.reward
+    assert w.shaping == "dense"
+    phi_max = place_potential_max(w, cfg.task.success_lift)
+    for s in _random_states(np.random.default_rng(0), 500):
+        phi = _potential(cfg, **s)
+        assert 0 <= phi <= phi_max + 1e-12
+        r = place_step_reward(w, cfg.place.rl.gamma, cfg.task.success_lift, phi, phi_prev=0.0)
+        assert r <= -w.step_penalty + 1e-12
+
+
+def test_dense_pick_stage_matches_pick_and_lift_reward(cfg):
+    """Before the lift, the dense reward is PickLiftEnv's reward shape up to a constant."""
+    w = cfg.place.rl.reward
+
+    def dense(**s):
+        return place_step_reward(w, cfg.place.rl.gamma, cfg.task.success_lift, _potential(cfg, **s), 0.0)
+
+    base = dict(lifted=False, goal_dist=0.2, bottom_height=0.0)
+    far = dense(**base, grasped=False, reach_dist=0.3, lift=0.0)
+    near = dense(**base, grasped=False, reach_dist=0.1, lift=0.0)
+    held = dense(**base, grasped=True, reach_dist=0.0, lift=0.03)
+    assert near - far == pytest.approx(w.reach_weight * 0.2)
+    assert held - near == pytest.approx(w.reach_weight * 0.1 + w.grasp_bonus + w.lift_weight * 0.03)
+
+
 def _loop_return(cfg, states):
-    """Total shaping reward around a closed loop of states (first == last)."""
+    """Total potential-shaping reward around a closed loop of states (first == last)."""
     gamma = cfg.place.rl.gamma
     phis = [_potential(cfg, **s) for s in states]
     return sum(gamma * b - a for a, b in zip(phis, phis[1:]))
@@ -164,13 +198,10 @@ def test_putting_down_and_picking_up_again_earns_nothing(cfg):
 
 
 def test_no_loop_of_states_pays(cfg):
-    """phi >= 0 and potential-based: any closed loop returns (gamma - 1) * sum(phi) <= 0."""
+    """Potential mode: phi >= 0, so any closed loop returns (gamma - 1) * sum(phi) <= 0."""
     rng = np.random.default_rng(0)
     for _ in range(200):
-        states = [dict(lifted=bool(rng.random() < 0.5), grasped=bool(rng.random() < 0.5),
-                       reach_dist=rng.uniform(0, 0.6), lift=rng.uniform(0, 0.2),
-                       goal_dist=rng.uniform(0, 0.6), bottom_height=rng.uniform(0, 0.25))
-                  for _ in range(rng.integers(2, 8))]
+        states = _random_states(rng, int(rng.integers(2, 8)))
         assert all(_potential(cfg, **s) >= 0 for s in states)
         assert _loop_return(cfg, states + states[:1]) <= 1e-12
 

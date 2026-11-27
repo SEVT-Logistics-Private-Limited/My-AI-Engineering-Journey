@@ -144,11 +144,11 @@ The arm carries at lift height in steps of at most 1 cm per control tick (`move_
 |---|---|
 | **Environment** | `PickPlace-v0` ([`env_place.py`](src/pickplace/env_place.py)): same scene, camera, estimator and 4-D action as pick-and-lift |
 | **Observation (17)** | The pick-and-lift observation (10) · goal position (3) · goal − object (3) · a "lifted yet" flag (1), because success depends on history the current state does not show |
-| **Reward** | −0.1 per step · progress terms as potential differences γΦ(s′) − Φ(s): reach → grasp → lift, then carry → lower near the goal · +25 on success · −25, and the episode ends, if the cube is dropped from above 2 cm, topples or leaves the workspace |
+| **Reward** | A staged potential Φ ≥ 0 rises through reach → grasp → lift, then carry → lower near the goal; every step pays −0.1 − (Φ_max − Φ) · +25 on success · −60, and the episode ends, if the cube is dropped from above 2 cm, topples or leaves the workspace |
 | **Curriculum** | Half the training episodes start with the cube already in hand (the scripted pick as the reset); evaluation always starts from scratch |
 | **Discount** | γ = 0.98: the task takes ~30–80 steps, and γ = 0.95 looks only about 20 ahead |
 
-Written as potential differences, no progress bonus can be collected twice: around any loop of states the shaping sums to (γ − 1)·ΣΦ ≤ 0, so hovering at the goal, lifting again and again, or putting the cube down and picking it up all lose reward, by construction. Each of these is a unit test, as are pushing (never lifted, never a success) and throwing (a terminal failure). One more trap is checked by config validation: with a terminal penalty smaller than a full episode of step penalties, failing on purpose to end the episode early would beat trying.
+Every step costs at least 0.1, so hovering at the goal never pays, and once the cube is lifted Φ ignores the grasp and the lift height, so lifting again and again or putting the cube down and picking it up again earns nothing. Each of these is a unit test, as are pushing (never lifted, never a success) and throwing (a terminal failure). Before the lift, the reward is pick-and-lift's reward up to a constant. One more trap is checked by config validation: the fail penalty must exceed the discounted cost of never succeeding from a lifted state, or dropping the cube to end the episode early would beat trying.
 
 ## How it works
 
@@ -213,6 +213,7 @@ What broke during development, how each issue was diagnosed, and the measured ef
 | 4 | Same seed, different outcome | **Non-deterministic resets.** Bullet keeps solver and contact caches across resets; `saveState`/`restoreState` did not clear them (verified). Trajectories diverged by up to 6 cm. | Rebuild the physics world each episode (60 ms) | Bit-identical rollouts per seed |
 | 5 | Wrist reached only ~55% of the commanded rotation | The IK null-space rest pose pinned the wrist joint, and convergence checked position only | Bias the rest pose by the target yaw; check orientation too | Yaw error < 3° |
 | 6 | Pick-and-place: every cube landed ~18 mm off target, always on the gripper's closing axis | **Uncoupled fingers.** The URDF drives the two fingers with independent motors; holding the cube, both saturate at equal force, so nothing keeps the pair centred and the cube drifted up to 2 cm while carried. Re-aiming the hand from finger kinematics helped (to ~7 mm) but a second correction near the floor dragged the cube (12 mm). | Couple the fingers with a gear constraint, as on the real Franka Hand; pick-and-place only, so pick-and-lift results stay bit-identical | 18 mm → 3 mm mean goal error, 100% placement on development seeds |
+| 7 | Pick-and-place policy: 0% validation success after 60k steps, no sign of progress | **Too weak a learning signal.** Progress was paid as potential differences γΦ(s′) − Φ(s). That is policy-invariant and unfarmable, but two states' values then differ only by their difference in Φ, about 50× less than with a per-step cost at γ = 0.98; pick-and-lift's per-step costs had learned in 25k steps. | Same staged Φ, paid every step as −step_penalty − (Φ_max − Φ): never positive, so still unfarmable; fail penalty re-derived so dropping the cube never beats trying | Pending: retraining |
 
 Complexity was added only where measurements justified it. One estimator rule never fired in 100 development episodes, so it was removed.
 
@@ -237,7 +238,7 @@ Complexity was added only where measurements justified it. One estimator rule ne
 | **Fresh physics world every episode** | Results depend only on the seed, never on episode order. |
 | **Validated configuration** | Unknown or missing keys, and reward settings that allow hovering, fail at load time. |
 | **One success rule per task, shared by every controller** | `task.py` scores the scripted baseline and the RL policy identically, and has no simulator inside, so every failure case has its own unit test. |
-| **Potential-based progress rewards for pick-and-place** | A bonus written as γΦ(s′) − Φ(s) sums to at most zero around any loop, which removes hovering, re-lifting and put-down-pick-up hacks by construction rather than by patching each one. |
+| **One staged potential, paid as a per-step cost** | For pick-and-place, every step pays −step_penalty − (Φ_max − Φ): never positive, so no hovering or looping hack can pay, while value differences still scale with 1/(1 − γ). The policy-invariant alternative, γΦ(s′) − Φ(s), was too weak a signal (see engineering challenge 7). |
 | **Additive extension** | Pick-and-place reuses the scene, camera, estimator and controller, and the pick-and-lift regression outputs (tests, baseline, both policy evaluations) were checked to be identical per episode after the change. |
 
 ## Quickstart
@@ -260,7 +261,7 @@ python scripts/evaluate.py --controller rl --obs-source perception   # ... actin
 python scripts/train_rl.py                           # retrain from scratch (~18 min on 4 CPU cores)
 python scripts/plot_training.py --run runs/<name>    # training curve → assets/
 python scripts/plot_perception.py                    # perception figure → assets/
-pytest -q                                            # 116 tests, ~20 s
+pytest -q                                            # 120 tests, ~20 s
 ```
 
 Pick-and-place uses the same scripts with `--task place`:
@@ -285,7 +286,7 @@ Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer (with `--ta
 
 ## Testing and CI
 
-- **116 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipelines, both Gymnasium environments, determinism, video and figures. For pick-and-place: one test per placement outcome on hand-built states, goal sampling, solvability through the action API, and one test per reward hack (hovering at the goal, pushing, throwing, re-lifting, putting down and picking up again).
+- **120 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipelines, both Gymnasium environments, determinism, video and figures. For pick-and-place: one test per placement outcome on hand-built states, goal sampling, solvability through the action API, and one test per reward hack (hovering at the goal, pushing, throwing, re-lifting, putting down and picking up again).
 - **GitHub Actions** on Python 3.10 and 3.12, for every change to this project: the full test suite, a baseline smoke run, a **pick-and-place baseline gate** (at least 90% on 10 episodes), and **regression gates on the committed policy** (at least 90% success with ground truth and 80% with the camera), so a change that breaks the trained model fails CI.
 
 ## Project structure
@@ -301,6 +302,7 @@ vision-rl-pickplace/
 │   ├── task.py                Pick-and-place goal sampler and success rule (pure, shared)
 │   ├── env.py                 Gymnasium environment (PickLift-v0)
 │   ├── env_place.py           Gymnasium environment (PickPlace-v0)
+│   ├── rewards.py             Pick-and-place reward math (pure; also used by config validation)
 │   ├── sim.py                 PyBullet scene with deterministic resets
 │   ├── config.py              Typed, validated configuration
 │   ├── video.py               GIF / MP4 writer
@@ -314,7 +316,7 @@ vision-rl-pickplace/
 │   ├── plot_perception.py     Perception figure
 │   └── viz_theme.py           Shared figure colours
 ├── models/sac_picklift.zip    Trained policy (best validation checkpoint)
-├── tests/                     116 tests
+├── tests/                     120 tests
 └── assets/                    Demo GIFs, perception figure, training curve
 ```
 

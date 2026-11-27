@@ -52,8 +52,31 @@ def test_success_threshold_above_baseline_lift_is_rejected(tmp_path):
 
 
 def test_default_config_has_place_section(cfg):
+    from pickplace.rewards import place_failure_threshold
+
     assert cfg.place.goal_tolerance < cfg.place.min_distance
-    assert cfg.place.rl.reward.fail_penalty > cfg.place.rl.reward.step_penalty * cfg.place.rl.max_episode_steps
+    w = cfg.place.rl.reward
+    assert w.fail_penalty > place_failure_threshold(w, cfg.place.rl.gamma, cfg.task.success_lift)
+
+
+def test_failure_threshold_depends_on_shaping(cfg):
+    import dataclasses
+
+    from pickplace.rewards import place_failure_threshold, place_potential_max
+
+    w, gamma, lift = cfg.place.rl.reward, cfg.place.rl.gamma, cfg.task.success_lift
+    dense = place_failure_threshold(w, gamma, lift)
+    assert dense == pytest.approx((w.step_penalty + w.goal_weight * w.distance_ref
+                                   + w.lower_weight * w.lower_ref) / (1 - gamma))
+    wp = dataclasses.replace(w, shaping="potential")
+    assert place_failure_threshold(wp, gamma, lift) == pytest.approx(
+        w.step_penalty / (1 - gamma) + place_potential_max(wp, lift))
+
+
+def test_unknown_shaping_rejected(tmp_path):
+    path = _write(tmp_path, lambda d: d["place"]["rl"]["reward"].update(shaping="sparse"))
+    with pytest.raises(ConfigError, match="shaping"):
+        load_config(path)
 
 
 def test_goal_tolerance_must_be_below_min_distance(tmp_path):

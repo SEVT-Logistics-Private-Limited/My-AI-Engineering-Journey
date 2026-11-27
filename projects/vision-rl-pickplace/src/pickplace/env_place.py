@@ -13,28 +13,30 @@ Observation (17,), metres in the robot base frame:
 
 Action (4,): unchanged, [dx, dy, dz, gripper].
 
-Reward:
-    - step_penalty                                    every step
-    + gamma * phi(s') - phi(s)                        progress (potential-based shaping)
-    + success_bonus, episode ends                     task.evaluate_placement == SUCCESS
-    - fail_penalty, episode ends                      released too high, toppled, left the workspace
+Reward (``place.rl.reward``, math in ``rewards.py``), from a staged potential
+phi(s) >= 0 that rises through reach -> grasp -> lift -> carry -> lower:
+    dense (default)   -step_penalty - (phi_max - phi(s'))     every step
+    potential         -step_penalty + gamma*phi(s') - phi(s)  every step
+    + success_bonus, episode ends     task.evaluate_placement == SUCCESS
+    - fail_penalty, episode ends      released too high, toppled, left the workspace
 
-The potential phi >= 0 stages the task (see ``place_potential``):
-    before lifted   reach_weight * (closer hand to cube)
-                    + while grasped: grasp_bonus + lift_weight * lift (capped)
-    after lifted    everything above at its maximum
-                    + goal_weight * (closer cube to goal)
-                    + lower_weight * (lower cube), fading in within lower_radius of the goal
+Dense: every step costs at least step_penalty, so hovering at the goal or
+looping (re-lifting, putting the cube down and picking it up) never beats
+finishing; once lifted, phi ignores the grasp and the lift height, so neither
+pays anything. Being further along costs less on every following step, so value
+differences scale with 1 / (1 - gamma): the same signal strength that let
+pick-and-lift train in 25k steps (before the lift, the dense reward equals
+PickLiftEnv's up to a constant). Potential shaping is policy-invariant and
+sums to at most zero around any loop, but a value difference between two
+states is only their difference in phi; it reached 0% validation success after
+60k steps and is kept as an option for comparison.
 
-Potential differences sum to (almost) zero around any loop, so no bonus can be
-collected repeatedly: lifting again and again, putting the cube down and
-picking it up, or hovering at the goal all lose reward. Standing still earns
-(gamma - 1) * phi - step_penalty < 0. The success rule needs the cube lifted
-first, so pushing it to the goal earns nothing, and a release from above
-``place.max_release_height`` ends the episode with the fail penalty, so
-throwing does not pay either. The fail penalty is larger than the step
-penalties of a full episode, so failing on purpose to end the episode early
-never beats trying (enforced by config validation).
+The success rule needs the cube lifted first, so pushing it to the goal never
+succeeds, and a release from above ``place.max_release_height`` ends the
+episode with the fail penalty, so throwing does not pay either. Config
+validation requires the fail penalty to exceed the discounted cost of never
+succeeding from a lifted state, so failing on purpose to end the episode early
+never beats trying.
 """
 
 from __future__ import annotations
@@ -45,34 +47,16 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from .config import Config, PlaceRewardConfig
+from .config import Config
 from .env import PickLiftEnv
 from .pipeline import PickPipeline
+from .rewards import place_potential, place_step_reward
 from .task import (
     TERMINAL_FAILURES, PlaceOutcome, PlacementState, ReleaseTracker, evaluate_placement,
     sample_place_goal, spawn_region,
 )
 
 OBS_DIM = 17
-# Distances in the workspace stay below this, so the distance potentials stay >= 0.
-DIST_REF = 0.5
-# Lowering potential: cube bottom heights above this earn nothing.
-LOWER_REF = 0.2
-
-
-def place_potential(w: PlaceRewardConfig, success_lift: float, *, lifted: bool, grasped: bool,
-                    reach_dist: float, lift: float, goal_dist: float, bottom_height: float) -> float:
-    """Shaping potential phi(s) >= 0, increasing through the task's stages."""
-    pre_lift_max = w.reach_weight * DIST_REF + w.grasp_bonus + w.lift_weight * success_lift
-    if not lifted:
-        phi = w.reach_weight * max(0.0, DIST_REF - reach_dist)
-        if grasped:
-            phi += w.grasp_bonus + w.lift_weight * float(np.clip(lift, 0.0, success_lift))
-        return phi
-    near_goal = max(0.0, 1.0 - goal_dist / w.lower_radius)
-    return (pre_lift_max
-            + w.goal_weight * max(0.0, DIST_REF - goal_dist)
-            + w.lower_weight * near_goal * max(0.0, LOWER_REF - max(0.0, bottom_height)))
 
 
 class PickPlaceEnv(PickLiftEnv):
@@ -141,7 +125,7 @@ class PickPlaceEnv(PickLiftEnv):
 
         w = self.cfg.place.rl.reward
         phi = self._potential()
-        reward = -w.step_penalty + self.cfg.place.rl.gamma * phi - self._phi
+        reward = place_step_reward(w, self.cfg.place.rl.gamma, self.cfg.task.success_lift, phi, self._phi)
         self._phi = phi
         success = self._outcome is PlaceOutcome.SUCCESS
         failed = self._outcome in TERMINAL_FAILURES

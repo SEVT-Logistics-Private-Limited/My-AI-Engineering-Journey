@@ -110,17 +110,25 @@ place:
     total_timesteps: 400000
     gamma: 0.98                 # the task is ~50-100 steps long; 0.95 looks ~20 steps ahead
     reward:
-      # Progress terms are potential differences gamma*phi(s') - phi(s) with phi >= 0
-      # (see env_place.py), so no bonus can be farmed by hovering or looping.
+      # Staged potential phi(s) >= 0 (env_place.py): before lifted, closer hand and a grasp and
+      # lift; after lifted, closer cube to the goal and, near it, lower. Two ways to pay it:
+      #   dense      r = -step_penalty - (phi_max - phi(s'))  every step <= -step_penalty, so
+      #              hovering or looping never beats finishing; value gaps scale with 1/(1-gamma)
+      #   potential  r = -step_penalty + gamma*phi(s') - phi(s)  (policy-invariant but a weak
+      #              signal: 0% validation success after 60k steps, see README)
+      shaping: dense
       step_penalty: 0.1
-      reach_weight: 2.0         # before lifted: closer hand to cube
-      grasp_bonus: 0.5          # before lifted: both fingers on the cube
-      lift_weight: 10.0         # before lifted: lift height, capped at task.success_lift
-      goal_weight: 4.0          # after lifted: closer cube to goal
-      lower_weight: 10.0        # after lifted, near the goal: lower cube
+      reach_weight: 1.0         # per metre, hand to cube (before lifted); as in pick-and-lift
+      grasp_bonus: 0.25         # both fingers on the cube (before lifted); as in pick-and-lift
+      lift_weight: 10.0         # per metre of lift, capped at task.success_lift; as in pick-and-lift
+      goal_weight: 1.0          # per metre, cube to goal (after lifted)
+      lower_weight: 2.5         # per metre of cube height near the goal (after lifted)
       lower_radius: 0.05        # the lowering term fades in within this distance of the goal
+      distance_ref: 0.5         # distances are measured against this (keeps phi >= 0)
+      lower_ref: 0.2            # cube heights above this earn nothing
       success_bonus: 25.0
-      # Must exceed step_penalty * max_episode_steps, or failing early beats trying.
-      fail_penalty: 25.0
+      # Must exceed the discounted cost of never succeeding from a lifted state, or dropping
+      # the cube to end the episode beats trying (enforced by config validation).
+      fail_penalty: 60.0
     curriculum:
       start_grasped_prob: 0.5   # training only: start this share of episodes holding the cube
