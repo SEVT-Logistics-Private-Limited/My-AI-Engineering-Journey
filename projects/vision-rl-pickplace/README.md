@@ -2,7 +2,7 @@
 
 # Vision-RL Pick-and-Lift
 
-**Computer vision and robot learning for robotic grasping.** A simulated Franka Panda robot arm finds a cube with a depth camera, keeps tracking it even when its own arm hides it, and picks it up with a control policy learned by reinforcement learning on a standard CPU.
+**Computer vision and robot learning for robotic grasping.** A simulated Franka Panda robot arm finds a cube with a depth camera, keeps tracking it even when its own arm hides it, and picks it up with a control policy learned by reinforcement learning on a standard CPU, then carries it to a goal spot and sets it down.
 
 [![CI](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml/badge.svg?branch=main)](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml)
 ![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12-2563eb)
@@ -15,7 +15,7 @@
 
 *Left: learned SAC policy acting on camera estimates. Right: classical Vision + IK baseline. Real time, 24 fps.*
 
-**99%** pick success from camera input · **1.8 mm** 3D localisation error · **18 min** training on a 4-core CPU · **47** tests in CI
+**99%** pick success from camera input · **100%** pick-and-place on held-out tests · **1.8 mm** 3D localisation error · **18 min** training on a 4-core CPU · **122** tests in CI
 
 </div>
 
@@ -30,10 +30,10 @@
 |---|---|
 | **Challenge** | To pick up an object, a robot must see it, locate it precisely and grasp it reliably, including when its own arm hides the object from the camera. |
 | **Solution** | A complete perception-to-action software stack, built and tested in simulation: computer vision locates the object from a depth camera, a state estimator keeps tracking it through occlusion, and a control policy trained by reinforcement learning picks it up. |
-| **Results** | 99% pick success from camera input on 100 held-out test episodes; 1.8 mm localisation error; 100% on object orientations never seen in training. |
+| **Results** | 99% pick success from camera input on 100 held-out test episodes; 1.8 mm localisation error; 100% on object orientations never seen in training. Pick-and-place: 100% on 100 held-out tests from the camera, 4.4 mm mean placement error. |
 | **Efficiency** | Trained in 18 minutes on a standard 4-core CPU, with no GPU and no robot hardware. |
 | **Why it matters** | Picking is a core step in warehouse and logistics automation. This prototype demonstrates, without any robot hardware, the software such systems need: perception, tracking, learned control and rigorous testing. |
-| **Quality** | Every result is reproducible from its seed; 47 automated tests and continuous-integration gates on the trained policy guard against regressions. |
+| **Quality** | Every result is reproducible from its seed; 122 automated tests and continuous-integration gates on the trained policy and both pick-and-place controllers guard against regressions. |
 
 ## Contents
 
@@ -105,9 +105,9 @@ Every episode is a pure function of its seed (see [Engineering challenges](#engi
 
 The second task: pick the cube up, carry it, and put it back down on the floor at a goal spot (the green disc) at least 10 cm from where it was picked. It reuses the scene, camera, state estimator and controller. Pick-and-lift above is unchanged: its regression outputs (tests, baseline, both policy evaluations) were checked to be identical per episode after the change.
 
-<img src="assets/baseline_place.gif" width="420" alt="Classical Vision + IK baseline picking up the cube, carrying it to the green goal disc and setting it down">
+<img src="assets/hybrid_place.gif" width="420" alt="Learned SAC pick, acting on camera estimates, followed by a scripted carry and place onto the green goal disc"> <img src="assets/baseline_place.gif" width="420" alt="Classical Vision + IK baseline picking up the cube, carrying it to the green goal disc and setting it down">
 
-*Classical Vision + IK baseline. Real time, 24 fps.*
+*Left: learned pick (the pick-and-lift SAC policy, on camera estimates) + scripted place. Right: classical Vision + IK baseline. Real time, 24 fps.*
 
 ### Success rule
 
@@ -127,7 +127,39 @@ Goals are random per episode, at least 13 cm (10 cm + 3 cm tolerance) from the p
 
 ### Results
 
-**Pending.** The pick-and-place policy is still training; results for every controller on the held-out test seeds (30000–30099) will be added together, after development is frozen, following the same protocol as pick-and-lift.
+All numbers come from **100 held-out test episodes** (seeds 30000–30099), each with its own random pick spot and goal, evaluated once after development was frozen. Every controller is scored by the success rule above.
+
+| Controller | Object position from | Success | Goal error, mean (max) |
+|---|---|---|---|
+| Vision + IK baseline | Camera | **100%** (100/100) | 3.2 mm (7.7 mm) |
+| Learned pick + scripted place | Simulator ground truth | **100%** (100/100) | 5.2 mm (21.4 mm) |
+| Learned pick + scripted place | **Camera + state estimator** | **100%** (100/100) | 4.4 mm (14.1 mm) |
+| End-to-end SAC policy | Simulator ground truth | 0% in all three training runs ([below](#end-to-end-rl-not-solved-yet)) | – |
+
+"Learned pick" is the committed pick-and-lift SAC policy, unchanged: it acts on its usual 10-value observation until the cube is lifted, then the scripted pipeline carries and places it (`evaluate.py --task place --controller hybrid`). This is the plan's fallback, and it shows the modular design: the learned skill and the scripted one share the scene, the controller and the success rule.
+
+| Out of distribution | Baseline | Learned pick + scripted place |
+|---|---|---|
+| Goals within 2 cm of the goal region's edge | 100% | 100% |
+| Cube rotated up to ±45° (the pick policy trained at 0°) | – | 98%: 2 toppled |
+
+The edge band was tightened from 5 cm to 2 cm after a first run showed that most 5 cm "edge" goals were ordinary goals (two thirds of the region qualified); the controllers did not change.
+
+- **Failure breakdown:** 2 failures in 600 test episodes, both `toppled` with the cube rotated: the policy does not turn the wrist, so a rotated cube can be held across its diagonal, and released, it settles on an edge (tilt ≈ 54°).
+- **Placement error** comes mostly from where the cube sits between the finger pads after the pick, which the hand cannot sense; the baseline's carry only translates it, so for the baseline a seed gives the same error with any goal.
+- **Camera check:** with the arm back home, the photo agrees with the true position to 1.8 mm on average.
+
+### End-to-end RL: not solved yet
+
+Three training runs of `PickPlace-v0` did not produce a policy that places the cube from scratch:
+
+| Run | Reward | Curriculum (training only) | Steps | Validation success | What the policy learned |
+|---|---|---|---|---|---|
+| 1 | Potential differences γΦ(s′) − Φ(s) | 50% start in hand | 60k (stopped) | 0% | Nothing measurable: returns flat |
+| 2 | Dense: −0.1 − (Φ_max − Φ) per step | 50% start in hand | 75k (stopped) | 0% | Reaches the cube and occasionally lifts it from scratch; a cube already in hand is carried to within 4 cm of the goal but never lowered |
+| 3 | Dense, lowering zone 5 → 15 cm | 25% in hand + 25% just above the goal (reverse curriculum) | 120k (stopped) | 0% | Nothing measurable from scratch: returns flat. About 2% of training episodes that start just above the goal succeed, but none from a pick |
+
+Run 2 confirmed the diagnosis of run 1 (engineering challenge 7): the dense cost learned reaching and occasional lifting, which potential shaping never did. The remaining gap appears to be the release: letting go above 2 cm is a terminal failure (−60), and the policy seems to learn to keep the gripper closed before it learns to lower first and then open (run 3's early in-hand successes, which came from random warm-up actions, disappeared once training took over). The plan's decision point is at 300k steps (below about 70%: fall back). Run 3 was stopped at 120k instead, because its validation curve was flat at 0% with no trend, so the learned-pick + scripted-place controller is the deployed pick-and-place controller. Likely next steps: Hindsight Experience Replay with a goal-conditioned observation, a softer penalty for releases between 2 and 5 cm, or a separate learned place skill started from a grasped cube (the plan's other fallback).
 
 ### How the baseline places
 
@@ -213,7 +245,7 @@ What broke during development, how each issue was diagnosed, and the measured ef
 | 4 | Same seed, different outcome | **Non-deterministic resets.** Bullet keeps solver and contact caches across resets; `saveState`/`restoreState` did not clear them (verified). Trajectories diverged by up to 6 cm. | Rebuild the physics world each episode (60 ms) | Bit-identical rollouts per seed |
 | 5 | Wrist reached only ~55% of the commanded rotation | The IK null-space rest pose pinned the wrist joint, and convergence checked position only | Bias the rest pose by the target yaw; check orientation too | Yaw error < 3° |
 | 6 | Pick-and-place: every cube landed ~18 mm off target, always on the gripper's closing axis | **Uncoupled fingers.** The URDF drives the two fingers with independent motors; holding the cube, both saturate at equal force, so nothing keeps the pair centred and the cube drifted up to 2 cm while carried. Re-aiming the hand from finger kinematics helped (to ~7 mm) but a second correction near the floor dragged the cube (12 mm). | Couple the fingers with a gear constraint, as on the real Franka Hand; pick-and-place only, so pick-and-lift results stay bit-identical | 18 mm → 3 mm mean goal error, 100% placement on development seeds |
-| 7 | Pick-and-place policy: 0% validation success after 60k steps, no sign of progress | **Too weak a learning signal.** Progress was paid as potential differences γΦ(s′) − Φ(s). That is policy-invariant and unfarmable, but two states' values then differ only by their difference in Φ, about 50× less than with a per-step cost at γ = 0.98; pick-and-lift's per-step costs had learned in 25k steps. | Same staged Φ, paid every step as −step_penalty − (Φ_max − Φ): never positive, so still unfarmable; fail penalty re-derived so dropping the cube never beats trying | Pending: retraining |
+| 7 | Pick-and-place policy: 0% validation success after 60k steps, no sign of progress | **Too weak a learning signal.** Progress was paid as potential differences γΦ(s′) − Φ(s). That is policy-invariant and unfarmable, but two states' values then differ only by their difference in Φ, about 50× less than with a per-step cost at γ = 0.98; pick-and-lift's per-step costs had learned in 25k steps. | Same staged Φ, paid every step as −step_penalty − (Φ_max − Φ): never positive, so still unfarmable; fail penalty re-derived so dropping the cube never beats trying | Occasional lifts from scratch by 40k steps (potential shaping: nothing by 60k); placement still unsolved, so the plan's fallback is deployed ([details](#end-to-end-rl-not-solved-yet)) |
 
 Complexity was added only where measurements justified it. One estimator rule never fired in 100 development episodes, so it was removed.
 
@@ -270,7 +302,8 @@ Pick-and-place uses the same scripts with `--task place`:
 python scripts/run_baseline.py --task place --episodes 20                        # Vision + IK pick-and-place
 python scripts/evaluate.py --task place --controller baseline --episodes 100      # test seeds, failure breakdown
 python scripts/evaluate.py --task place --controller rl --obs-source perception   # trained policy on camera input
-python scripts/evaluate.py --task place --controller rl --edge-goals --random-yaw # out-of-distribution checks
+python scripts/evaluate.py --task place --controller hybrid --obs-source perception # learned pick + scripted place
+python scripts/evaluate.py --task place --controller hybrid --edge-goals --random-yaw # out-of-distribution checks
 python scripts/train_rl.py --task place                                           # retrain (curriculum, γ = 0.98)
 python scripts/plot_training.py --run runs/<name> --task place                    # training_curve_place → assets/
 ```
@@ -279,7 +312,7 @@ Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer (with `--ta
 
 **Verified from a clean install (November 2026)** on a 4-core CPU with Python 3.13, PyTorch 2.15 (CPU), Stable-Baselines3 2.9.2, Gymnasium 1.4.0 and PyBullet 3.2.7 built from source:
 
-- all 47 tests pass;
+- all 47 tests of the pick-and-lift version pass;
 - every success rate in [Results](#results) reproduces exactly, including which seed fails;
 - retraining from scratch took 21 minutes, matched the validation curve at every point, and produced a policy bit-identical to the committed `models/sac_picklift.zip`;
 - perception error varies slightly with the PyBullet build: five seed sets of 100 placements gave 1.6–1.7 mm mean and under 3 mm max error.
@@ -287,7 +320,7 @@ Useful flags: `--gui` on `run_baseline.py` opens the PyBullet viewer (with `--ta
 ## Testing and CI
 
 - **122 tests:** config validation, camera geometry, perception accuracy, the state estimator, inverse kinematics, the baseline pipelines, both Gymnasium environments, determinism, video and figures. For pick-and-place: one test per placement outcome on hand-built states, goal sampling, solvability through the action API, and one test per reward hack (hovering at the goal, pushing, throwing, re-lifting, putting down and picking up again).
-- **GitHub Actions** on Python 3.10 and 3.12, for every change to this project: the full test suite, a baseline smoke run, a **pick-and-place baseline gate** (at least 90% on 10 episodes), and **regression gates on the committed policy** (at least 90% success with ground truth and 80% with the camera), so a change that breaks the trained model fails CI.
+- **GitHub Actions** on Python 3.10 and 3.12, for every change to this project: the full test suite, a baseline smoke run, **pick-and-place gates** for the baseline and the learned-pick + scripted-place controller (at least 90% on 10 episodes each), and **regression gates on the committed policy** (at least 90% success with ground truth and 80% with the camera), so a change that breaks the trained model fails CI.
 
 ## Project structure
 
@@ -331,6 +364,8 @@ vision-rl-pickplace/
 - **Simulation only.** No domain randomisation yet, so sim-to-real transfer is untested. Determinism holds per PyBullet build.
 - **Pick-and-place is checked only once the arm is out of view.** The baseline's camera check runs with the arm back home; a cube that bounces or tips while the hand hides it is the same hidden-displacement case as above. With camera input, the RL policy's arm is still above the cube right after release, so its estimate relies on the "released cubes rest where they were let go" assumption.
 - **The goal is a point, not a region,** and there is a single object; placing next to or on top of other objects is not modelled.
+- **No end-to-end learned pick-and-place yet.** The deployed controller learns the pick and scripts the place; three RL runs did not learn to place from scratch ([details](#end-to-end-rl-not-solved-yet)).
+- **Rotated cubes can topple on release.** The pick policy does not turn the wrist, so a cube rotated ±45° is sometimes held across its diagonal (2 of 100 test episodes).
 
 **Roadmap**
 
@@ -338,7 +373,7 @@ vision-rl-pickplace/
 2. Learned detection or instance segmentation, then point-cloud grasp poses for cluttered scenes.
 3. A wrist camera or second viewpoint, to recover from hidden displacement.
 4. Visual RL from pixels (an image encoder with augmentation, e.g. DrQ) to learn perception end to end.
-5. ~~Extend pick-and-lift to full pick-and-place (carry the cube to a goal position)~~ **Done:** see [Pick-and-place](#pick-and-place). Still open: Hindsight Experience Replay, which needs a dictionary observation and a reward that can be recomputed for any goal; the "was lifted" condition does not fit that format cleanly.
+5. ~~Extend pick-and-lift to full pick-and-place (carry the cube to a goal position)~~ **Done** with a learned pick and a scripted place: see [Pick-and-place](#pick-and-place). Still open: an end-to-end learned policy, for example with Hindsight Experience Replay, which needs a dictionary observation and a reward that can be recomputed for any goal; the "was lifted" condition does not fit that format cleanly.
 
 ## Topics covered in this project
 

@@ -64,7 +64,8 @@ Results on 100 held-out test episodes. Success means the cube is held and lifted
 
 - **Perception:** 1.8 mm mean 3D localisation error over 100 placements.
 - **About the baseline:** a hand-written controller also solves every test case, which shows the task is solvable. The learned policy matches it within one episode while learning the behaviour from rewards alone.
-- **Engineering:** diagnosed and fixed reward hacking · a camera-plus-joint-sensor state estimator raised camera-driven success from 21% to 98% on development seeds · physics rebuilt each episode for bit-identical runs · 47 tests in CI, plus regression gates on the trained policy.
+- **Engineering:** diagnosed and fixed reward hacking · a camera-plus-joint-sensor state estimator raised camera-driven success from 21% to 98% on development seeds · physics rebuilt each episode for bit-identical runs · 122 tests in CI, plus regression gates on the trained policy.
+- **Pick-and-place:** the arm also carries the cube to a random goal spot and sets it down: 100% on 100 held-out tests from the camera, 4.4 mm mean placement error (learned pick + scripted place; an end-to-end learned policy is not solved yet).
 - **Reproducible:** from a clean install, every success rate above reproduces exactly, and retraining from scratch produces a policy bit-identical to the committed one (re-checked November 2026).
 
 [Project write-up](projects/vision-rl-pickplace/README.md) · [Results](projects/vision-rl-pickplace/README.md#results) · [Engineering challenges](projects/vision-rl-pickplace/README.md#engineering-challenges) · [Quickstart](projects/vision-rl-pickplace/README.md#quickstart) · [Source code](projects/vision-rl-pickplace)
