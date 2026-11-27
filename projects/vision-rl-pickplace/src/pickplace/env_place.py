@@ -221,6 +221,7 @@ class PickPlaceEnv(PickLiftEnv):
             "grasped": self.scene.is_grasped(),
             "object_position": obj.copy(),
             "goal": self._goal.copy(),
+            "pick_xy": self._pick_xy.copy(),
             "distance_to_goal": float(np.linalg.norm(obj[:2] - self._goal[:2])),
             "distance_moved": float(np.linalg.norm(obj[:2] - self._pick_xy)),
             "tilt": self.scene.object_tilt(),

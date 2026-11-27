@@ -159,12 +159,18 @@ class PickPlacePipeline(PickPipeline):
         result = PickPlaceResult(picked.outcome, picked, goal_xy, pick_xy)
         if not picked.success:
             return result
-        return self.place(goal_xy, result)
+        # Keep the grasp yaw; the placed cube's rotation does not matter.
+        return self.place(goal_xy, result, yaw=picked.detection.yaw)
 
-    def place(self, goal_xy: np.ndarray, result: PickPlaceResult) -> PickPlaceResult:
+    def place(self, goal_xy: np.ndarray, result: PickPlaceResult, yaw: float = 0.0) -> PickPlaceResult:
+        """Carry the held cube to ``goal_xy``, set it down, retreat and check.
+
+        Starts from whatever hold the arm is in, so any pick can precede it: the
+        scripted ``pick()`` or a learned policy (``evaluate.py --controller hybrid``).
+        """
         cfg, pl = self.cfg, self.cfg.place
         ctl, cb, scene = self.controller, self.on_step, self.scene
-        yaw = result.pick.detection.yaw     # keep the grasp yaw; the placed cube's rotation is free
+        goal_xy = np.asarray(goal_xy, float)[:2]
         tracker = ReleaseTracker(pl.release_steps)
 
         def track() -> None:
@@ -172,8 +178,9 @@ class PickPlacePipeline(PickPipeline):
             if cb is not None:
                 cb()
 
-        # The hand holds the cube centre grasp_z_offset below the grasp point.
-        carry_z = ctl.ee_position()[2]
+        # Carry no lower than the hover height (a learned pick may stop just above
+        # the success height). The hand holds the cube centre grasp_z_offset below the grasp point.
+        carry_z = max(ctl.ee_position()[2], pl.hover_height)
         release_z = cfg.object.size / 2 + pl.place_z_offset - cfg.grasp.grasp_z_offset
         waypoints = [np.r_[goal_xy, z] for z in (carry_z, pl.hover_height, release_z)]
         if not all(self._in_workspace(pt) for pt in waypoints):

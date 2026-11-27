@@ -14,6 +14,7 @@
     python scripts/evaluate.py --task place --controller baseline --episodes 100
     python scripts/evaluate.py --task place --controller rl --obs-source perception
     python scripts/evaluate.py --task place --controller rl --edge-goals --random-yaw
+    python scripts/evaluate.py --task place --controller hybrid   # learned pick + scripted place
 
 Both controllers see the same seeded object placements, so their numbers are comparable.
 Default seeds (30000+) are the held-out test set used for the README results.
@@ -32,7 +33,7 @@ from pickplace.camera import RGBDCamera, render_presentation
 from pickplace.config import load_config
 from pickplace.env import PickLiftEnv
 from pickplace.env_place import PickPlaceEnv
-from pickplace.pipeline import PickPipeline, PickPlacePipeline
+from pickplace.pipeline import Outcome, PickPipeline, PickPlacePipeline, PickPlaceResult, PickResult
 from pickplace.sim import Scene
 from pickplace.task import sample_place_goal
 from pickplace.video import check_video_path, save_video
@@ -154,6 +155,48 @@ def evaluate_place_rl(cfg, model_path: str, obs_source: str, episodes: int, seed
     return records
 
 
+def evaluate_place_hybrid(cfg, lift_model_path: str, obs_source: str, episodes: int, seed: int,
+                          video: str | None, edge_goals: bool, random_yaw: bool) -> list[dict]:
+    """Modular controller: the pick-and-lift policy picks, the scripted pipeline places.
+
+    The policy acts on the first 10 observation values (exactly its training
+    observation) until the cube is lifted, then ``PickPlacePipeline.place`` takes
+    over from that hold. Same env, seeds and success rule as the other controllers.
+    """
+    from stable_baselines3 import PPO, SAC  # lazy: the baseline needs no torch
+
+    algo = SAC if cfg.rl.algorithm == "SAC" else PPO
+    model = algo.load(lift_model_path, device="cpu")
+    env = PickPlaceEnv(cfg, obs_source=obs_source, edge_goals=edge_goals,
+                       object_yaw_range=cfg.object.yaw_range if random_yaw else None)
+    rec = FrameRecorder(env.scene.client, video is not None)
+    placer = PickPlacePipeline(env.scene, env.camera, on_step=rec, controller=env.controller)
+    records = []
+    for ep in range(episodes):
+        t0 = time.time()
+        obs, info = env.reset(seed=seed + ep)
+        rec()
+        steps = 0
+        while not info["lifted"] and steps < cfg.rl.max_episode_steps:
+            action, _ = model.predict(obs[:10], deterministic=True)
+            obs, _, _, _, info = env.step(action)
+            rec()
+            steps += 1
+        if not info["lifted"]:
+            keep = ("distance_to_goal", "distance_moved", "tilt")
+            records.append(_place_record(ep, "pick_failed", {k: info[k] for k in keep}, time.time() - t0, steps))
+            continue
+        result = PickPlaceResult(Outcome.SUCCESS, PickResult(Outcome.SUCCESS), info["goal"][:2], info["pick_xy"])
+        r = placer.place(info["goal"][:2], result)
+        out = {"distance_to_goal": r.distance_to_goal, "distance_moved": r.distance_moved,
+               "tilt": r.tilt, "camera_error": r.camera_error, "camera_goal_error": r.camera_goal_error}
+        records.append(_place_record(ep, r.outcome.value, out, time.time() - t0, steps))
+    if video:
+        rec.save(video, fps=24)
+    env.close()
+    return records
+
+
 def evaluate_place_baseline(cfg, episodes: int, seed: int, video: str | None, edge_goals: bool) -> list[dict]:
     records = []
     with Scene(cfg, coupled_fingers=True) as scene:
@@ -205,7 +248,8 @@ def summarize_place(records: list[dict]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--task", choices=("lift", "place"), default="lift")
-    parser.add_argument("--controller", choices=("rl", "baseline"), default="rl")
+    parser.add_argument("--controller", choices=("rl", "baseline", "hybrid"), default="rl",
+                        help="hybrid (place only): the pick-and-lift policy picks, the scripted pipeline places")
     parser.add_argument("--model", default=None,
                         help="policy file (default: models/sac_picklift.zip, or models/sac_pickplace.zip for --task place)")
     parser.add_argument("--obs-source", choices=("ground_truth", "perception"), default="ground_truth")
@@ -217,13 +261,14 @@ def main() -> None:
     parser.add_argument("--video", default=None, help="output .gif or .mp4")
     parser.add_argument("--min-success", type=float, default=None,
                         help="exit non-zero if the success rate (0-1) is below this; used as a CI regression gate")
+    parser.add_argument("--lift-model", default=DEFAULT_MODELS["lift"], help="hybrid only: the picking policy")
     parser.add_argument("--edge-goals", action="store_true",
                         help="place only: goals near the edge of the goal region (out of distribution)")
     parser.add_argument("--random-yaw", action="store_true",
                         help="place, rl only: random cube yaw from object.yaw_range (out of distribution)")
     args = parser.parse_args()
-    if args.task == "lift" and (args.edge_goals or args.random_yaw):
-        parser.error("--edge-goals and --random-yaw need --task place")
+    if args.task == "lift" and (args.edge_goals or args.random_yaw or args.controller == "hybrid"):
+        parser.error("--edge-goals, --random-yaw and --controller hybrid need --task place")
     args.model = args.model or DEFAULT_MODELS[args.task]
     if args.min_success is not None and not 0.0 <= args.min_success <= 1.0:
         parser.error("--min-success must be between 0 and 1")
@@ -237,11 +282,17 @@ def main() -> None:
     start = time.time()
     if args.controller == "rl" and not Path(args.model).is_file():
         raise SystemExit(f"model not found: {args.model} (train one with scripts/train_rl.py --task {args.task})")
+    if args.controller == "hybrid" and not Path(args.lift_model).is_file():
+        raise SystemExit(f"model not found: {args.lift_model} (train one with scripts/train_rl.py)")
     if args.task == "place":
         if args.controller == "rl":
             records = evaluate_place_rl(cfg, args.model, args.obs_source, args.episodes, args.seed, args.video,
                                         args.edge_goals, args.random_yaw)
             label = f"place rl[{args.obs_source}]"
+        elif args.controller == "hybrid":
+            records = evaluate_place_hybrid(cfg, args.lift_model, args.obs_source, args.episodes, args.seed,
+                                            args.video, args.edge_goals, args.random_yaw)
+            label = f"place hybrid[{args.obs_source}]"
         else:
             records = evaluate_place_baseline(cfg, args.episodes, args.seed, args.video, args.edge_goals)
             label = "place baseline[perception]"
