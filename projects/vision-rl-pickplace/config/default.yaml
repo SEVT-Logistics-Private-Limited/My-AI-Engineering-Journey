@@ -86,3 +86,54 @@ rl:
     learning_starts: 2000
     net_arch: [256, 256]
   seed: 0
+
+place:
+  # Pick-and-place: carry the cube and set it down on the floor at a goal spot.
+  # Success rule (src/pickplace/task.py), shared by the baseline and the RL env:
+  # lifted >= task.success_lift, released low, fingers clear, at rest, upright,
+  # inside the spawn region, >= min_distance from the pick spot (and, in
+  # goal_mode "target", within goal_tolerance of the goal).
+  goal_mode: target             # target | any  ("any": no goal tolerance, only min_distance)
+  min_distance: 0.10            # minimum distance moved from the pick spot
+  goal_tolerance: 0.03          # goals are >= min_distance + goal_tolerance from the pick spot
+  max_release_height: 0.02      # cube bottom above the floor when the fingers let go
+  max_tilt: 0.26                # 15 degrees, to the nearest face-up orientation
+  rest_speed: 0.01              # m/s
+  release_steps: 3              # control steps with no finger contact
+  edge_band: 0.02               # out-of-distribution test: goals this close to the goal-region edge
+                                # (at 0.05, two thirds of all goals already qualified)
+  hover_height: 0.12            # baseline: hand height above the floor before the final descent
+  place_z_offset: 0.005         # baseline: let go with the cube bottom 5 mm above the floor
+  carry_step: 0.01              # baseline: max hand movement per control step while carrying
+  settle_steps: 24              # baseline: control steps to wait at home before checking
+  rl:
+    max_episode_steps: 200
+    total_timesteps: 400000
+    gamma: 0.98                 # the task is ~50-100 steps long; 0.95 looks ~20 steps ahead
+    reward:
+      # Staged potential phi(s) >= 0 (env_place.py): before lifted, closer hand and a grasp and
+      # lift; after lifted, closer cube to the goal and, near it, lower. Two ways to pay it:
+      #   dense      r = -step_penalty - (phi_max - phi(s'))  every step <= -step_penalty, so
+      #              hovering or looping never beats finishing; value gaps scale with 1/(1-gamma)
+      #   potential  r = -step_penalty + gamma*phi(s') - phi(s)  (policy-invariant but a weak
+      #              signal: 0% validation success after 60k steps, see README)
+      shaping: dense
+      step_penalty: 0.1
+      reach_weight: 1.0         # per metre, hand to cube (before lifted); as in pick-and-lift
+      grasp_bonus: 0.25         # both fingers on the cube (before lifted); as in pick-and-lift
+      lift_weight: 10.0         # per metre of lift, capped at task.success_lift; as in pick-and-lift
+      goal_weight: 1.0          # per metre, cube to goal (after lifted)
+      lower_weight: 2.5         # per metre of cube height near the goal (after lifted)
+      lower_radius: 0.15        # the lowering term fades in within this distance of the goal
+      distance_ref: 0.5         # distances are measured against this (keeps phi >= 0)
+      lower_ref: 0.2            # cube heights above this earn nothing
+      success_bonus: 25.0
+      # Must exceed the discounted cost of never succeeding from a lifted state, or dropping
+      # the cube to end the episode beats trying (enforced by config validation).
+      fail_penalty: 60.0
+    curriculum:
+      # Training only; evaluation always starts from scratch. The rest start from scratch.
+      start_grasped_prob: 0.25      # holding the cube at lift height above the pick spot
+      # Reverse curriculum: holding the cube just above the goal, so the release and its
+      # reward are met early. Without it, a run never released at the goal once in 75k steps.
+      start_above_goal_prob: 0.25

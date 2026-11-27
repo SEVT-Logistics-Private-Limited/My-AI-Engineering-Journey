@@ -2,6 +2,7 @@
 
     python scripts/plot_training.py --run runs/sac_final
     python scripts/plot_training.py --run runs/sac_final --out-dir assets
+    python scripts/plot_training.py --run runs/sac_place_main --task place   # training_curve_place*.png
 
 Reads <run>/eval/evaluations.npz, written by the EvalCallback in train_rl.py,
 and writes training_curve.png, training_curve_dark.png and training_curve.csv.
@@ -23,6 +24,20 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib.ticker import FuncFormatter, MultipleLocator  # noqa: E402
 from viz_theme import THEMES  # noqa: E402  (scripts/ is on sys.path when run directly)
+
+
+@dataclass(frozen=True)
+class TaskStyle:
+    goal: str           # what a successful validation episode does
+    time_limit: int     # episode length that means "no success"
+    x_tick: int         # training-step spacing of x-axis ticks
+    prefix: str         # output file stem
+
+
+TASKS = {
+    "lift": TaskStyle("lift the cube", 100, 20_000, "training_curve"),
+    "place": TaskStyle("place the cube at the goal", 200, 50_000, "training_curve_place"),
+}
 
 
 @dataclass(frozen=True)
@@ -53,7 +68,7 @@ def load_curve(run: Path) -> Curve:
     )
 
 
-def _style_axes(ax, t: dict, x_max: float) -> None:
+def _style_axes(ax, t: dict, x_max: float, x_tick: int) -> None:
     ax.set_facecolor(t["surface"])
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
@@ -64,7 +79,7 @@ def _style_axes(ax, t: dict, x_max: float) -> None:
     ax.tick_params(colors=t["muted"], labelsize=9, length=0, pad=6)
     # Explicit range: set_xlim(0, None) before plotting would freeze the default (0, 1).
     ax.set_xlim(0, x_max * 1.04)
-    ax.xaxis.set_major_locator(MultipleLocator(20_000))
+    ax.xaxis.set_major_locator(MultipleLocator(x_tick))
     ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: "0" if v == 0 else f"{v / 1000:.0f}K"))
     ax.set_xlabel("Training steps", color=t["muted"], fontsize=9, labelpad=6)
 
@@ -82,20 +97,20 @@ def _mark_checkpoint(ax, step: float, top: float, t: dict) -> None:
                 ha="left", va="top", fontsize=8.5, color=t["muted"])
 
 
-def render(curve: Curve, theme: str, out: Path) -> None:
+def render(curve: Curve, theme: str, out: Path, task: TaskStyle = TASKS["lift"]) -> None:
     t = THEMES[theme]
     fig, (ax_s, ax_l) = plt.subplots(1, 2, figsize=(10, 3.6), dpi=160)
     fig.patch.set_facecolor(t["surface"])
     ckpt = curve.steps[curve.checkpoint_index]
 
     # Panel 1: success rate.
-    _style_axes(ax_s, t, float(curve.steps[-1]))
+    _style_axes(ax_s, t, float(curve.steps[-1]), task.x_tick)
     _plot_series(ax_s, curve.steps, curve.success * 100, t)
     ax_s.set_ylim(0, 114)
     ax_s.yaxis.set_major_locator(MultipleLocator(25))
     ax_s.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}%" if v <= 100 else ""))
     ax_s.set_title("Validation success rate", loc="left", color=t["ink"], fontsize=11, pad=18)
-    ax_s.text(0, 1.03, f"share of {curve.n_episodes} validation episodes that lift the cube",
+    ax_s.text(0, 1.03, f"share of {curve.n_episodes} validation episodes that {task.goal}",
               transform=ax_s.transAxes, fontsize=8.5, color=t["ink2"])
     first_full = int(np.argmax(curve.success >= 1.0)) if (curve.success >= 1.0).any() else None
     if first_full is not None:
@@ -105,19 +120,20 @@ def render(curve: Curve, theme: str, out: Path) -> None:
                       ha="right", va="bottom", fontsize=8.5, color=t["ink2"])
     _mark_checkpoint(ax_s, ckpt, 60, t)
 
-    # Panel 2: episode length (100 = time limit, i.e. no success).
-    _style_axes(ax_l, t, float(curve.steps[-1]))
+    # Panel 2: episode length (time limit = no success).
+    limit = task.time_limit
+    _style_axes(ax_l, t, float(curve.steps[-1]), task.x_tick)
     _plot_series(ax_l, curve.steps, curve.length, t)
-    ax_l.set_ylim(0, 114)
-    ax_l.yaxis.set_major_locator(MultipleLocator(25))
-    ax_l.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}" if v <= 100 else ""))
+    ax_l.set_ylim(0, limit * 1.14)
+    ax_l.yaxis.set_major_locator(MultipleLocator(limit / 4))
+    ax_l.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}" if v <= limit else ""))
     ax_l.set_title("Steps to finish an episode", loc="left", color=t["ink"], fontsize=11, pad=18)
-    ax_l.text(0, 1.03, "mean over the same episodes; 100 = time limit, no success",
+    ax_l.text(0, 1.03, f"mean over the same episodes; {limit} = time limit, no success",
               transform=ax_l.transAxes, fontsize=8.5, color=t["ink2"])
     ax_l.annotate(f"{curve.length[-1]:.1f} steps", (curve.steps[-1], curve.length[-1]),
                   xytext=(0, 10), textcoords="offset points", ha="right", va="bottom",
                   fontsize=8.5, color=t["ink2"])
-    _mark_checkpoint(ax_l, ckpt, 60, t)
+    _mark_checkpoint(ax_l, ckpt, 0.6 * limit, t)
 
     fig.tight_layout(w_pad=3)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -138,15 +154,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run", required=True, help="training run directory (from train_rl.py --out)")
     parser.add_argument("--out-dir", default="assets")
+    parser.add_argument("--task", choices=tuple(TASKS), default="lift")
     args = parser.parse_args()
 
+    task = TASKS[args.task]
     curve = load_curve(Path(args.run))
     out_dir = Path(args.out_dir)
-    render(curve, "light", out_dir / "training_curve.png")
-    render(curve, "dark", out_dir / "training_curve_dark.png")
-    write_csv(curve, out_dir / "training_curve.csv")
+    names = (f"{task.prefix}.png", f"{task.prefix}_dark.png", f"{task.prefix}.csv")
+    render(curve, "light", out_dir / names[0], task)
+    render(curve, "dark", out_dir / names[1], task)
+    write_csv(curve, out_dir / names[2])
     print(f"saved checkpoint at {int(curve.steps[curve.checkpoint_index])} steps; "
-          f"wrote training_curve.png, training_curve_dark.png, training_curve.csv to {out_dir}")
+          f"wrote {', '.join(names)} to {out_dir}")
 
 
 if __name__ == "__main__":

@@ -42,6 +42,10 @@ jobs:
         run: pytest -q
       - name: Baseline smoke run
         run: python scripts/run_baseline.py --episodes 5
+      - name: Pick-and-place baseline regression gate
+        run: python scripts/evaluate.py --task place --controller baseline --episodes 10 --min-success 0.9
+      - name: Pick-and-place learned pick + scripted place regression gate
+        run: python scripts/evaluate.py --task place --controller hybrid --episodes 10 --min-success 0.9
       # Regression gates: fail if the committed policy stops working, not just if
       # it fails to load. Thresholds allow one failure, because PyBullet builds
       # (prebuilt wheel vs source) can differ numerically.

@@ -13,6 +13,7 @@ import pybullet as p
 import pybullet_data
 
 from .config import Config
+from .task import cube_bottom_height, cube_tilt
 
 # Panda link/joint indices in pybullet_data's franka_panda/panda.urdf.
 ARM_JOINTS = tuple(range(7))
@@ -28,9 +29,14 @@ class ObjectState:
 
 
 class Scene:
-    def __init__(self, cfg: Config, gui: bool = False):
+    def __init__(self, cfg: Config, gui: bool = False, coupled_fingers: bool = False):
         self.cfg = cfg
         self.gui = gui
+        # The real Franka Hand drives both fingers through one mechanism, but the
+        # URDF's finger joints are independent: a held cube can then drift between
+        # them by centimetres. Pick-and-place couples them; pick-and-lift keeps the
+        # original model so its results stay unchanged.
+        self.coupled_fingers = coupled_fingers
         self.client = p.connect(p.GUI if gui else p.DIRECT)
         if self.client < 0:
             raise RuntimeError("failed to connect to the PyBullet physics server")
@@ -70,6 +76,8 @@ class Scene:
             raise RuntimeError(f"body ids changed across rebuild: {ids}")
         self.plane_id, self.robot_id, self.object_id = ids
         self._configure_contacts()
+        if self.coupled_fingers:
+            self._couple_fingers()
         if self.gui:
             p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1, physicsClientId=self.client)
     def _create_cube(self) -> int:
@@ -95,6 +103,15 @@ class Scene:
                 self.robot_id, j, lateralFriction=friction, spinningFriction=0.001,
                 physicsClientId=self.client,
             )
+
+    def _couple_fingers(self) -> None:
+        """Gear constraint that keeps both finger joints at the same opening."""
+        c = p.createConstraint(
+            self.robot_id, FINGER_JOINTS[0], self.robot_id, FINGER_JOINTS[1],
+            jointType=p.JOINT_GEAR, jointAxis=[1, 0, 0], parentFramePosition=[0, 0, 0],
+            childFramePosition=[0, 0, 0], physicsClientId=self.client,
+        )
+        p.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50, physicsClientId=self.client)
 
     # ------------------------------------------------------------------ reset
     def reset(self) -> None:
@@ -142,6 +159,36 @@ class Scene:
         pos, orn = p.getBasePositionAndOrientation(self.object_id, physicsClientId=self.client)
         yaw = p.getEulerFromQuaternion(orn)[2]
         return ObjectState(np.array(pos), np.array(orn), float(yaw))
+
+    def object_velocity(self) -> np.ndarray:
+        """Linear velocity of the cube, m/s."""
+        lin, _ = p.getBaseVelocity(self.object_id, physicsClientId=self.client)
+        return np.array(lin)
+
+    def object_tilt(self) -> float:
+        """Angle between world up and the cube's nearest face normal (0 = resting flat on a face)."""
+        return cube_tilt(self.object_state().orientation)
+
+    def object_bottom_height(self) -> float:
+        """Height of the cube's lowest corner above the floor."""
+        state = self.object_state()
+        return cube_bottom_height(state.position, state.orientation, self.cfg.object.size)
+
+    def add_goal_marker(self, xy: np.ndarray, radius: float | None = None) -> int:
+        """Thin green disc on the floor at ``xy``. Visual only: no collision, no mass.
+
+        Not red, so the colour detector ignores it. ``reset()`` removes it; call
+        again after every reset.
+        """
+        radius = self.cfg.place.goal_tolerance if radius is None else radius
+        vis = p.createVisualShape(
+            p.GEOM_CYLINDER, radius=radius, length=0.001, rgbaColor=[0.1, 0.75, 0.25, 1.0],
+            physicsClientId=self.client,
+        )
+        return p.createMultiBody(
+            baseMass=0, baseCollisionShapeIndex=-1, baseVisualShapeIndex=vis,
+            basePosition=[float(xy[0]), float(xy[1]), 0.0005], physicsClientId=self.client,
+        )
 
     def finger_contacts(self) -> tuple[bool, bool]:
         """Whether each finger is touching the object."""

@@ -3,6 +3,7 @@
 Two levels of interface:
     * ``command_pose``  - one non-blocking control tick (used by the RL env)
     * ``move_to``       - closed-loop until the end-effector converges (used by the baseline)
+    * ``move_linear``   - straight line in small steps, then ``move_to`` (slip-free carrying)
 """
 
 from __future__ import annotations
@@ -125,3 +126,60 @@ class PandaController:
             self.scene.step(self.cfg.sim.control_substeps)
             if on_step is not None:
                 on_step()
+
+    def move_linear(self, position: np.ndarray, yaw: float = 0.0, max_step: float | None = None,
+                    tolerance: float | None = None, on_step=None, should_abort=None) -> bool:
+        """Move along a straight line in steps of at most ``max_step`` per control tick.
+
+        ``move_to`` jumps straight to the final IK target at full arm force, which
+        is fast enough to shake a held object loose. Here the commanded target
+        advances by at most ``max_step`` (default ``place.carry_step``) per tick,
+        then ``move_to`` converges on the endpoint. ``should_abort`` is checked
+        after every tick (for example: grasp lost); returns False if it fired or
+        the endpoint was not reached.
+        """
+        max_step = self.cfg.place.carry_step if max_step is None else max_step
+        if max_step <= 0:
+            raise ValueError("max_step must be positive")
+        start = self.ee_position()
+        position = np.asarray(position, float)
+        n = max(1, int(np.ceil(np.linalg.norm(position - start) / max_step)))
+        for i in range(1, n + 1):
+            self.command_pose(start + (position - start) * (i / n), yaw)
+            self.scene.step(self.cfg.sim.control_substeps)
+            if on_step is not None:
+                on_step()
+            if should_abort is not None and should_abort():
+                return False
+
+        def _abort_cb():
+            if on_step is not None:
+                on_step()
+            if should_abort is not None and should_abort():
+                raise _Aborted
+
+        try:
+            return self.move_to(position, yaw, tolerance=tolerance, on_step=_abort_cb)
+        except _Aborted:
+            return False
+
+    def move_home(self, max_steps: int | None = None, tolerance: float = 0.02, on_step=None) -> bool:
+        """Drive the arm back to ``robot.home_joints`` in joint space (out of the camera's view)."""
+        max_steps = self.cfg.grasp.max_move_steps if max_steps is None else max_steps
+        home = np.array(self.cfg.robot.home_joints)
+        for _ in range(max_steps):
+            p.setJointMotorControlArray(
+                self.robot, ARM_JOINTS, p.POSITION_CONTROL, targetPositions=home,
+                forces=[self.cfg.robot.arm_max_force] * 7, physicsClientId=self.client,
+            )
+            self._apply_gripper()
+            self.scene.step(self.cfg.sim.control_substeps)
+            if on_step is not None:
+                on_step()
+            if np.max(np.abs(self.joint_positions() - home)) < tolerance:
+                return True
+        return False
+
+
+class _Aborted(Exception):
+    """Internal: unwinds ``move_to`` when ``move_linear``'s abort condition fires."""

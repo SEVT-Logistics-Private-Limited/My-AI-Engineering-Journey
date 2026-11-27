@@ -11,7 +11,10 @@ from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from typing import Any, get_type_hints
 
+import numpy as np
 import yaml
+
+from .rewards import place_failure_threshold
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "default.yaml"
 
@@ -120,6 +123,54 @@ class RLConfig:
 
 
 @dataclass(frozen=True)
+class PlaceRewardConfig:
+    shaping: str
+    step_penalty: float
+    reach_weight: float
+    grasp_bonus: float
+    lift_weight: float
+    goal_weight: float
+    lower_weight: float
+    lower_radius: float
+    distance_ref: float
+    lower_ref: float
+    success_bonus: float
+    fail_penalty: float
+
+
+@dataclass(frozen=True)
+class CurriculumConfig:
+    start_grasped_prob: float
+    start_above_goal_prob: float
+
+
+@dataclass(frozen=True)
+class PlaceRLConfig:
+    max_episode_steps: int
+    total_timesteps: int
+    gamma: float
+    reward: PlaceRewardConfig
+    curriculum: CurriculumConfig
+
+
+@dataclass(frozen=True)
+class PlaceConfig:
+    goal_mode: str
+    min_distance: float
+    goal_tolerance: float
+    max_release_height: float
+    max_tilt: float
+    rest_speed: float
+    release_steps: int
+    edge_band: float
+    hover_height: float
+    place_z_offset: float
+    carry_step: float
+    settle_steps: int
+    rl: PlaceRLConfig
+
+
+@dataclass(frozen=True)
 class Config:
     sim: SimConfig
     robot: RobotConfig
@@ -130,6 +181,7 @@ class Config:
     task: TaskConfig
     grasp: GraspConfig
     rl: RLConfig
+    place: PlaceConfig
 
     def replace(self, **sections: Any) -> "Config":
         """Return a copy with whole sections swapped (configs are immutable)."""
@@ -189,6 +241,62 @@ def _validate(cfg: Config) -> None:
         f"rl.reward.step_penalty ({w.step_penalty}) must exceed the max per-step shaping "
         f"({max_shaped:.2f}); otherwise the agent learns to hover instead of finishing",
     )
+    _validate_place(cfg, check)
+
+
+def _validate_place(cfg: Config, check) -> None:
+    pl, ws = cfg.place, cfg.workspace
+    check(pl.goal_mode in ("target", "any"), "place.goal_mode must be target or any")
+    check(pl.min_distance > 0, "place.min_distance must be positive")
+    check(0 < pl.goal_tolerance < pl.min_distance,
+          "place.goal_tolerance must be positive and below place.min_distance")
+    # Goals are sampled at least goal_tolerance inside the spawn region, so any cube
+    # within tolerance of its goal is inside the region too.
+    gx = ws.object_x[1] - ws.object_x[0] - 2 * pl.goal_tolerance
+    gy = ws.object_y[1] - ws.object_y[0] - 2 * pl.goal_tolerance
+    check(gx > 0 and gy > 0, "place.goal_tolerance leaves no room for goals inside the spawn region")
+    # From a pick spot at the region centre, the farthest goal is a corner: half the diagonal.
+    check(0.5 * float(np.hypot(gx, gy)) > pl.min_distance + pl.goal_tolerance,
+          "a goal at place.min_distance + place.goal_tolerance must fit inside the spawn region "
+          "from every pick spot")
+    check(0 < pl.edge_band < 0.5 * min(gx, gy), "place.edge_band must be positive and below half the goal region")
+    check(0 < pl.max_release_height < pl.hover_height, "place.max_release_height must be in (0, hover_height)")
+    check(0 <= pl.place_z_offset < pl.max_release_height,
+          "place.place_z_offset must be below place.max_release_height, or the baseline drops the cube")
+    check(0 < pl.max_tilt < np.pi / 4, "place.max_tilt must be in (0, pi/4)")
+    check(pl.rest_speed > 0, "place.rest_speed must be positive")
+    check(pl.release_steps >= 1, "place.release_steps must be >= 1")
+    check(pl.carry_step > 0, "place.carry_step must be positive")
+    check(pl.settle_steps >= 0, "place.settle_steps must be >= 0")
+    check(cfg.workspace.ee_low[2] < pl.hover_height < cfg.grasp.lift_height,
+          "place.hover_height must be inside the workspace and below grasp.lift_height")
+
+    rl = pl.rl
+    w = rl.reward
+    check(rl.max_episode_steps >= 1 and rl.total_timesteps >= 1, "place.rl step counts must be positive")
+    check(0 < rl.gamma < 1, "place.rl.gamma must be in (0, 1)")
+    cur = rl.curriculum
+    check(min(cur.start_grasped_prob, cur.start_above_goal_prob) >= 0
+          and cur.start_grasped_prob + cur.start_above_goal_prob <= 1,
+          "place.rl.curriculum start probabilities must be non-negative and sum to at most 1")
+    check(w.shaping in ("dense", "potential"), "place.rl.reward.shaping must be dense or potential")
+    check(min(w.reach_weight, w.grasp_bonus, w.lift_weight, w.goal_weight, w.lower_weight,
+              w.success_bonus, w.fail_penalty) >= 0, "place.rl.reward weights must be non-negative")
+    check(min(w.lower_radius, w.distance_ref, w.lower_ref) > 0,
+          "place.rl.reward.lower_radius, distance_ref and lower_ref must be positive")
+    # Same rule as pick-and-lift: standing still must cost reward. Dense: every step pays
+    # -step_penalty - (phi_max - phi) <= -step_penalty. Potential: standing still pays
+    # -step_penalty + (gamma - 1) * phi <= -step_penalty, since phi >= 0.
+    check(w.step_penalty > 0,
+          "place.rl.reward.step_penalty must be positive; otherwise the agent learns to hover instead of finishing")
+    # Terminal failures (dropped, toppled, left the workspace) need a lifted cube. From any
+    # lifted state, failing must cost more than never succeeding, discounted.
+    threshold = place_failure_threshold(w, rl.gamma, cfg.task.success_lift)
+    check(
+        w.fail_penalty > threshold,
+        f"place.rl.reward.fail_penalty ({w.fail_penalty}) must exceed {threshold:.1f}, the discounted cost "
+        f"of never succeeding from a lifted state; otherwise ending the episode by failing beats trying",
+    )
 
 
 def load_config(path: str | Path | None = None) -> Config:
@@ -203,4 +311,4 @@ def load_config(path: str | Path | None = None) -> Config:
     return cfg
 
 
-__all__ = ["Config", "ConfigError", "load_config", "DEFAULT_CONFIG_PATH"]
+__all__ = ["Config", "ConfigError", "PlaceConfig", "load_config", "DEFAULT_CONFIG_PATH"]
