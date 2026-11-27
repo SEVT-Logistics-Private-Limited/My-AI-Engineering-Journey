@@ -6,7 +6,7 @@
 
 **Introduction · What it is · Why it is needed · How it works · Flow diagram · Real-world use cases · In our project**
 
-The last section, **In our project**, shows where the concept is used in the [Telugu Voice AI Assistant](../projects/telugu-voice-assistant/README.md) or the [Vision-RL Pick-and-Lift](../projects/vision-rl-pickplace/README.md) robot, with links to the code. 15 of the 34 topics are applied in the projects: 14 in the voice assistant, plus Reinforcement Learning in the robot.
+The last section, **In our project**, shows where the concept is used in the [Telugu Voice AI Assistant](../projects/telugu-voice-assistant/README.md) or the [Vision-RL Pick-and-Place](../projects/vision-rl-pickplace/README.md) robot, with links to the code. 15 of the 34 topics are applied in the projects: 14 in the voice assistant, plus Reinforcement Learning in the robot.
 
 ## Learning path
 

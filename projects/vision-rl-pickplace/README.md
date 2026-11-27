@@ -370,9 +370,9 @@ This project applies topics explained in [My AI Engineering Journey](../../READM
 
 | # | Topic | Used | How it is used here |
 |---|---|---|---|
-| 11 | [VLA](../../docs/11-vla.md#vision-rl-pick-and-lift) | Partly | Vision and action are built: camera → learned policy → arm. There is no language part: the task is fixed in code, not given as an instruction |
-| 13 | [ROS](../../docs/13-ros.md#vision-rl-pick-and-lift) | Not yet | Runs as one Python program in simulation; each part maps to a ROS 2 node, the planned step toward a real robot |
-| 21 | [Reinforcement Learning](../../docs/21-reinforcement-learning.md#vision-rl-pick-and-lift) | Yes | The core of the pick: a SAC policy learns to reach, grasp and lift the cube by trial and error, guided by rewards and penalties |
+| 11 | [VLA](../../docs/11-vla.md#vision-rl-pick-and-place) | Partly | Vision and action are built: camera → learned policy → arm. There is no language part: the task is fixed in code, not given as an instruction |
+| 13 | [ROS](../../docs/13-ros.md#vision-rl-pick-and-place) | Not yet | Runs as one Python program in simulation; each part maps to a ROS 2 node, the planned step toward a real robot |
+| 21 | [Reinforcement Learning](../../docs/21-reinforcement-learning.md#vision-rl-pick-and-place) | Yes | The core of the pick: a SAC policy learns to reach, grasp and lift the cube by trial and error, guided by rewards and penalties |
 
 ## Built with
 
