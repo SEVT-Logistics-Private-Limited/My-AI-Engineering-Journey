@@ -11,9 +11,9 @@
 ![SAC](https://img.shields.io/badge/RL-SAC%20%C2%B7%20Stable--Baselines3-7c3aed)
 ![Gymnasium](https://img.shields.io/badge/env-Gymnasium-0f766e)
 
-<img src="assets/rl_policy.gif" width="420" alt="Trained SAC policy, acting on camera estimates, picking up the cube"> <img src="assets/baseline.gif" width="420" alt="Classical Vision + IK baseline picking up the cube">
+<img src="assets/hybrid_place.gif" width="420" alt="Learned SAC pick, acting on camera estimates, followed by a scripted carry and place onto the green goal disc"> <img src="assets/baseline_place.gif" width="420" alt="Classical Vision + IK baseline picking up the cube, carrying it to the green goal disc and setting it down">
 
-*Left: learned SAC policy acting on camera estimates. Right: classical Vision + IK baseline. Real time, 24 fps.*
+*Pick-and-place. Left: learned SAC pick, acting on camera estimates, then a scripted carry and place onto the green goal. Right: classical Vision + IK baseline. Real time, 24 fps.*
 
 **99%** pick success from camera input · **100%** pick-and-place on held-out tests · **1.8 mm** 3D localisation error · **18 min** training on a 4-core CPU · **122** tests in CI
 
@@ -40,6 +40,10 @@
 [Results](#results) · [Pick-and-place](#pick-and-place) · [How it works](#how-it-works) · [Engineering challenges](#engineering-challenges) · [Skills demonstrated](#skills-demonstrated) · [Key design decisions](#key-design-decisions) · [Quickstart](#quickstart) · [Testing and CI](#testing-and-ci) · [Project structure](#project-structure) · [Limitations and roadmap](#limitations-and-roadmap) · [Topics covered](#topics-covered-in-this-project) · [Resources](#resources)
 
 ## Results
+
+<img src="assets/rl_policy.gif" width="420" alt="Trained SAC policy, acting on camera estimates, picking up the cube"> <img src="assets/baseline.gif" width="420" alt="Classical Vision + IK baseline picking up the cube">
+
+*Pick-and-lift. Left: learned SAC policy acting on camera estimates. Right: classical Vision + IK baseline. Real time, 24 fps.*
 
 All numbers come from **100 held-out test episodes** (seeds 30000–30099), each with the cube at a random position in a 25 × 40 cm workspace. These seeds were evaluated once, after development was frozen. Every controller is scored by the same rule: an episode succeeds when the cube is held and lifted at least 5 cm.
 
@@ -103,11 +107,7 @@ Every episode is a pure function of its seed (see [Engineering challenges](#engi
 
 ## Pick-and-place
 
-The second task: pick the cube up, carry it, and put it back down on the floor at a goal spot (the green disc) at least 10 cm from where it was picked. It reuses the scene, camera, state estimator and controller. Pick-and-lift above is unchanged: its regression outputs (tests, baseline, both policy evaluations) were checked to be identical per episode after the change.
-
-<img src="assets/hybrid_place.gif" width="420" alt="Learned SAC pick, acting on camera estimates, followed by a scripted carry and place onto the green goal disc"> <img src="assets/baseline_place.gif" width="420" alt="Classical Vision + IK baseline picking up the cube, carrying it to the green goal disc and setting it down">
-
-*Left: learned pick (the pick-and-lift SAC policy, on camera estimates) + scripted place. Right: classical Vision + IK baseline. Real time, 24 fps.*
+The second task: pick the cube up, carry it, and put it back down on the floor at a goal spot (the green disc) at least 10 cm from where it was picked. It reuses the scene, camera, state estimator and controller. Pick-and-lift above is unchanged: its regression outputs (tests, baseline, both policy evaluations) were checked to be identical per episode after the change. Both pick-and-place controllers are shown in the GIFs at the [top of this page](#vision-rl-pick-and-lift).
 
 ### Success rule
 

@@ -45,13 +45,13 @@ flowchart LR
 
 [![CI](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml/badge.svg?branch=main)](https://github.com/SEVT-Logistics-Private-Limited/My-AI-Engineering-Journey/actions/workflows/vision-rl-pickplace.yml)
 
-**A simulated robot arm finds a cube with a depth camera and picks it up, using a control policy learned by reinforcement learning in about 18 minutes on a 4-core CPU.** Research prototype: simulation only, not yet tested on a physical robot.
+**A simulated robot arm finds a cube with a depth camera, picks it up using a control policy learned by reinforcement learning in about 18 minutes on a 4-core CPU, then carries it to a goal spot and sets it down.** Research prototype: simulation only, not yet tested on a physical robot.
 
-<img src="projects/vision-rl-pickplace/assets/rl_policy.gif" width="480" alt="Simulated robot arm finding a red cube with its camera and picking it up">
+<img src="projects/vision-rl-pickplace/assets/hybrid_place.gif" width="480" alt="Simulated robot arm finding a red cube with its camera, picking it up with a learned policy and setting it down on a green goal spot">
 
 ```mermaid
 flowchart LR
-    A["Depth<br/>camera"] --> B["Computer vision<br/>locates the cube"] --> C["State estimator<br/>tracks it when hidden"] --> D["Learned policy<br/>picks the next move"] --> E["Robot arm<br/>lifts the cube"]
+    A["Depth<br/>camera"] --> B["Computer vision<br/>locates the cube"] --> C["State estimator<br/>tracks it when hidden"] --> D["Learned policy<br/>picks the next move"] --> E["Robot arm<br/>picks and places the cube"]
 ```
 
 Results on 100 held-out test episodes. Success means the cube is held and lifted at least 5 cm:
