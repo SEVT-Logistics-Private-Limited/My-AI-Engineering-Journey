@@ -57,7 +57,7 @@ Camera sees the bottle → ROS → VLA decides "pick it up" → ROS → Arm move
 
 ## In our project
 
-### Vision-RL Pick-and-Lift
+### Vision-RL Pick-and-Place
 
 **Not used yet.** Our robot runs in a simulator as one Python program, so its parts talk through ordinary function calls and don't need ROS. The parts are already split the way ROS splits a robot into nodes, which makes ROS the natural next step when the project moves to a real robot. [Project page →](../projects/vision-rl-pickplace/README.md)
 
@@ -68,12 +68,13 @@ How each part would map to ROS 2:
 | **Camera** | `RGBDCamera` renders colour and depth images | A camera driver node (for example, for an Intel RealSense) publishes the images and the camera's settings (`sensor_msgs/Image`, `sensor_msgs/CameraInfo`) |
 | **Computer vision** | `ColorObjectDetector` finds the cube and its 3D position | A perception node publishes the cube's position (`geometry_msgs/PoseStamped`) |
 | **State estimator** | `ObjectStateEstimator` keeps tracking the cube when the arm hides it | An estimator node combines the cube position with the arm's joint readings (`/joint_states`) |
-| **Learned policy** | The SAC policy chooses the next hand move, 24 times a second | A policy node publishes hand moves (`geometry_msgs/TwistStamped`) and gripper commands |
+| **Learned policy** | The SAC policy chooses each hand move of the pick, 24 times a second | A policy node publishes hand moves (`geometry_msgs/TwistStamped`) and gripper commands |
+| **Carry and place** | `PickPlacePipeline` carries the held cube to the goal in small straight-line steps, sets it down and checks the result with the camera | A place node sends the carry and place targets to MoveIt |
 | **Arm control** | `PandaController` turns hand moves into joint commands (inverse kinematics) | MoveIt Servo and the arm's driver move the real motors |
 
 ```text
 Today: one program, parts call each other directly
-Camera → Computer vision → State estimator → Policy → Inverse kinematics → Simulated arm
+Camera → Computer vision → State estimator → Pick policy → Carry and place → Inverse kinematics → Simulated arm
 
 With ROS 2: separate nodes exchange messages
 Camera node
@@ -83,8 +84,10 @@ Perception node
 Estimator node  ←── /joint_states (arm sensors)
     ↓ tracked cube position
 Policy node
-    ↓ hand moves, 24 times a second
-MoveIt Servo + arm driver
+    ↓ hand moves for the pick, 24 times a second
+Place node
+    ↓ carry and place targets, once the cube is lifted
+MoveIt + arm driver
     ↓
 Real robot arm
 ```
@@ -92,7 +95,7 @@ Real robot arm
 Why not ROS yet:
 - **No hardware yet.** In simulation, one program is simpler and faster. ROS earns its place when real cameras and motors need connecting.
 - **Exactly repeatable results.** One program steps the simulator in lockstep, so the same seed always gives the same result. Separate ROS nodes run on their own timing, which makes exact repeats harder.
-- **Simple setup and testing.** The project installs with `pip` and runs its 47 automated tests on every change, with no ROS installation.
+- **Simple setup and testing.** The project installs with `pip` and runs its 122 automated tests on every change, with no ROS installation.
 
 Already ROS-ready:
 - The computer vision needs only colour, depth, the camera's intrinsics (`K`), and where the camera is and which way it points (`T_world_cam`): exactly what a ROS camera driver provides (`Image`, `CameraInfo` and a `tf` transform).
