@@ -86,3 +86,41 @@ rl:
     learning_starts: 2000
     net_arch: [256, 256]
   seed: 0
+
+place:
+  # Pick-and-place: carry the cube and set it down on the floor at a goal spot.
+  # Success rule (src/pickplace/task.py), shared by the baseline and the RL env:
+  # lifted >= task.success_lift, released low, fingers clear, at rest, upright,
+  # inside the spawn region, >= min_distance from the pick spot (and, in
+  # goal_mode "target", within goal_tolerance of the goal).
+  goal_mode: target             # target | any  ("any": no goal tolerance, only min_distance)
+  min_distance: 0.10            # minimum distance moved from the pick spot
+  goal_tolerance: 0.03          # goals are >= min_distance + goal_tolerance from the pick spot
+  max_release_height: 0.02      # cube bottom above the floor when the fingers let go
+  max_tilt: 0.26                # 15 degrees, to the nearest face-up orientation
+  rest_speed: 0.01              # m/s
+  release_steps: 3              # control steps with no finger contact
+  edge_band: 0.05               # out-of-distribution test: goals this close to the goal-region edge
+  hover_height: 0.12            # baseline: hand height above the floor before the final descent
+  place_z_offset: 0.005         # baseline: let go with the cube bottom 5 mm above the floor
+  carry_step: 0.01              # baseline: max hand movement per control step while carrying
+  settle_steps: 24              # baseline: control steps to wait at home before checking
+  rl:
+    max_episode_steps: 200
+    total_timesteps: 400000
+    gamma: 0.98                 # the task is ~50-100 steps long; 0.95 looks ~20 steps ahead
+    reward:
+      # Progress terms are potential differences gamma*phi(s') - phi(s) with phi >= 0
+      # (see env_place.py), so no bonus can be farmed by hovering or looping.
+      step_penalty: 0.1
+      reach_weight: 2.0         # before lifted: closer hand to cube
+      grasp_bonus: 0.5          # before lifted: both fingers on the cube
+      lift_weight: 10.0         # before lifted: lift height, capped at task.success_lift
+      goal_weight: 4.0          # after lifted: closer cube to goal
+      lower_weight: 10.0        # after lifted, near the goal: lower cube
+      lower_radius: 0.05        # the lowering term fades in within this distance of the goal
+      success_bonus: 25.0
+      # Must exceed step_penalty * max_episode_steps, or failing early beats trying.
+      fail_penalty: 25.0
+    curriculum:
+      start_grasped_prob: 0.5   # training only: start this share of episodes holding the cube
